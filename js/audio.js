@@ -7,6 +7,7 @@ SS.Audio = (() => {
   const overrides = {};     // name -> AudioBuffer
   const musicOverrides = {}; // track -> AudioBuffer
   let musicSrc = null;
+  let loopLens = {};
 
   const SFX_NAMES = ['shoot', 'hit', 'armorHit', 'collect', 'place', 'fuse', 'invalid', 'explode', 'zap', 'flame', 'lob',
     'chomp', 'unitDie', 'slimeDie', 'surge', 'finalWave', 'sweeper', 'win', 'lose', 'click', 'select', 'shieldBreak', 'hop', 'smash', 'freeze', 'start'];
@@ -49,7 +50,14 @@ SS.Audio = (() => {
     if (location.protocol === 'file:') return;
     SS.assetManifest().then(m => {
       (m.sfx || []).forEach(async n => { const b = await tryLoad(`assets/sfx/${n}.mp3`); if (b) overrides[n] = b; });
-      (m.music || []).forEach(async n => { const b = await tryLoad(`assets/music/${n}.mp3`); if (b) musicOverrides[n] = b; });
+      loopLens = m.loops || {};
+      (m.music || []).forEach(async n => {
+        const b = await tryLoad(`assets/music/${n}.mp3`);
+        if (!b) return;
+        musicOverrides[n] = b;
+        // swap a synth track that's already playing for the loaded file
+        if (seq && seq.name === n && !seq.file) { const keep = n; stopMusic(); playMusic(keep); }
+      });
     });
   }
 
@@ -150,8 +158,17 @@ SS.Audio = (() => {
     if (seq && seq.name === name) return;
     stopMusic();
     if (musicOverrides[name]) {
-      musicSrc = ctx.createBufferSource(); musicSrc.buffer = musicOverrides[name]; musicSrc.loop = true;
-      musicSrc.connect(musicBus); musicSrc.start();
+      const buf = musicOverrides[name];
+      musicSrc = ctx.createBufferSource(); musicSrc.buffer = buf; musicSrc.loop = true;
+      // gapless: skip any decoder padding and loop exactly the musical length
+      const L = loopLens[name];
+      if (L && buf.duration > L) {
+        const d = buf.getChannelData(0); let i = 0; const lim = Math.min(d.length, Math.floor(buf.sampleRate * 0.1));
+        while (i < lim && Math.abs(d[i]) < 0.0005) i++;
+        const start = Math.min(i / buf.sampleRate, buf.duration - L);
+        musicSrc.loopStart = start; musicSrc.loopEnd = start + L;
+      }
+      musicSrc.connect(musicBus); musicSrc.start(0, musicSrc.loopStart || 0);
       seq = { name, file: true }; return;
     }
     const tr = TRACKS[name]; if (!tr) return;

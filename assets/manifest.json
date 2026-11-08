@@ -1,5 +1,29 @@
 {
   "sprites": [],
-  "sfx": [],
-  "music": []
+  "sfx": [
+    "shoot",
+    "hit",
+    "slimeDie",
+    "explode",
+    "collect",
+    "place",
+    "fuse",
+    "zap",
+    "flame",
+    "chomp",
+    "win",
+    "lose",
+    "surge",
+    "finalWave"
+  ],
+  "music": [
+    "menu",
+    "battle",
+    "boss"
+  ],
+  "loops": {
+    "menu": 8.0,
+    "battle": 32.0,
+    "boss": 8.0
+  }
 }
