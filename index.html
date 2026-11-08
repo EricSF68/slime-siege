@@ -23,6 +23,7 @@
     <p class="sub">Robots vs. Slime · Fuse robots to build the ultimate defense</p>
     <div class="menu">
       <button id="btn-play" class="big">Play</button>
+      <button id="btn-howto">How to Play</button>
       <button id="btn-almanac">Almanac</button>
       <button id="btn-settings">Settings</button>
       <button id="btn-fullscreen">Fullscreen</button>
@@ -51,6 +52,7 @@
     <div class="menu">
       <button id="p-resume" class="big">Resume</button>
       <button id="p-restart">Restart Level</button>
+      <button id="p-howto">How to Play</button>
       <button id="p-almanac">Almanac</button>
       <button id="p-quit">Quit to Map</button>
     </div>
@@ -65,6 +67,8 @@
   <section class="screen" id="settings">
     <h2>Settings</h2>
     <div class="settings">
+      <label>Graphics style <select data-set="gfx" id="set-gfx"><option value="classic">Classic (vector)</option><option value="illustrated">Illustrated</option></select></label>
+      <p class="muted small" id="gfx-note"></p>
       <label>Difficulty <select data-set="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
       <label>Sound effects <input type="range" min="0" max="1" step="0.05" data-set="sfx"></label>
       <label>Music <input type="range" min="0" max="1" step="0.05" data-set="music"></label>
@@ -77,6 +81,54 @@
       <button id="st-back" class="back">Back</button>
       <button id="st-reset" class="danger">Reset progress</button>
     </div>
+  </section>
+
+  <section class="screen" id="howto">
+    <h2>How to Play</h2>
+    <div class="howto">
+      <div class="ht-block">
+        <h3>Goal</h3>
+        <p>Slimes ooze in from the right. Build robots on the 5×9 grid to stop them before they reach your base on the left. Survive every wave to win the level.</p>
+      </div>
+      <div class="ht-block ht-fig">
+        <div class="ht-icons" data-icons="energy"></div>
+        <div>
+          <h3>Energy</h3>
+          <p>Robots cost energy. Tap the glowing cells that drop from above (+25 each). <b>Sparkplugs</b> make more energy over time, so build a few early. Turn on <i>Auto-collect energy</i> in Settings if you'd rather not tap.</p>
+        </div>
+      </div>
+      <div class="ht-block">
+        <h3>Building robots</h3>
+        <p>Tap a robot card at the top, then tap a square. Or drag the card onto the square. A card shows its cost; it greys out while recharging or when you can't afford it. Use <b>Remove</b> (the wrench) to clear a square.</p>
+      </div>
+      <div class="ht-block ht-fig">
+        <div class="ht-icons" data-icons="r:blaster,+,r:blaster,=,r:twin"></div>
+        <div>
+          <h3>Fusion</h3>
+          <p>Place a robot on top of another to fuse them into something stronger. Squares that glow <b style="color:var(--gold)">gold</b> can take the selected robot. Fusions keep going: a Blaster on a Twin Blaster makes a Gatling Bot. All 20 recipes are in the Almanac.</p>
+        </div>
+      </div>
+      <div class="ht-block ht-fig">
+        <div class="ht-icons" data-icons="s:capped,s:shield,s:hopper"></div>
+        <div>
+          <h3>Slimes</h3>
+          <p>Each slime eats the first robot in its way. Some wear armor, some carry shields that block straight shots (lob or zap over them), and Hoppers jump your first robot. Check the Almanac for each one's trick.</p>
+        </div>
+      </div>
+      <div class="ht-block">
+        <h3>Sweepers and losing</h3>
+        <p>Each lane has one Sweeper drone at the base. The first slime to get through sets it off and clears the lane. If another slime gets through that lane after that, the slimes win.</p>
+      </div>
+      <div class="ht-block">
+        <h3>Controls</h3>
+        <p><b>Touch or mouse:</b> tap cards, squares and energy. ⏸ pauses, 2× speeds up.<br><b>Keyboard:</b> 1–9 pick a robot · W remove tool · F speed · Space pause · Esc cancel.</p>
+      </div>
+      <div class="ht-block">
+        <h3>Tips</h3>
+        <p>Two Sparkplugs per lane is a strong start. Put walls (Bulwark) in front of your shooters. Save a Bomb Bot for big slimes. Watch the wave bar: flags mark the big surges.</p>
+      </div>
+    </div>
+    <button id="ht-back" class="back">Back</button>
   </section>
 
   <section class="screen" id="almanac">

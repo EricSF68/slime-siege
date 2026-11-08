@@ -99,3 +99,13 @@ button.danger { background:#5a1f24; border-color:#a0404a; }
   .settings { gap:6px; } .settings label { font-size:14px; }
   button { min-height:44px; padding:6px 14px; font-size:15px; }
 }
+
+.howto { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; width:min(900px,88vw); overflow:auto; max-height:62vh; padding:2px; }
+.ht-block { background:#121a2a; border-radius:12px; padding:10px 14px; min-width:0; }
+.ht-block h3 { margin:0 0 4px; color:var(--gold); font-size:17px; }
+.ht-block p { margin:0; font-size:14px; line-height:1.45; color:#d6e2f5; }
+.ht-fig { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; }
+.ht-fig > div:last-child { flex:1 1 220px; min-width:0; }
+.ht-icons { display:flex; align-items:center; gap:2px; flex:0 0 auto; font-weight:900; font-size:20px; color:var(--muted); }
+@media (max-height:500px) { .howto { max-height:calc(100dvh - 140px); } #howto h2 { font-size:20px; } }
+@media (max-width:640px) { .ht-fig { flex-direction:column; align-items:flex-start; } }

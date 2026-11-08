@@ -11,6 +11,7 @@ SS.Art = (() => {
     }));
   }
 
+  const useSprite = id => !!sprites[id] && (!SS.settings || SS.settings.gfx !== 'classic');
   function shade(hex, amt) {
     let r, g, b;
     const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(hex);
@@ -178,7 +179,7 @@ SS.Art = (() => {
     ctx.save();
     if (o.scale) ctx.scale(o.scale, o.scale);
     if (o.alpha != null) ctx.globalAlpha *= o.alpha;
-    if (sprites[id]) {
+    if (useSprite(id)) {
       const img = sprites[id];
       const h = 100, w = img.width / img.height * h;
       ctx.drawImage(img, -w / 2, 44 - h, w, h);
@@ -311,7 +312,7 @@ SS.Art = (() => {
     const w = R * 1.15 * (1 + sq) * (1 + melt * 0.6), h = R * 1.55 * (1 - sq) * (1 - melt * 0.85);
     // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ell(ctx, 0, 2, w * 1.05, 7 * d.size); ctx.fill();
-    if (sprites[type]) {
+    if (useSprite(type)) {
       const img = sprites[type]; const hh = R * 3.2, ww = img.width / img.height * hh;
       ctx.save(); ctx.scale(1 + sq, (1 - sq) * (1 - melt * 0.85)); ctx.drawImage(img, -ww / 2, -hh, ww, hh); ctx.restore();
     } else {
@@ -457,7 +458,7 @@ SS.Art = (() => {
     const { W, H, COLS, ROWS, TW, TH, BX, BY } = SS.CONST;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
-    if (sprites.background) { ctx.drawImage(sprites.background, 0, 0, W, H); return c; }
+    if (useSprite('background')) { ctx.drawImage(sprites.background, 0, 0, W, H); return c; }
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1b2333'); g.addColorStop(1, '#0f141e');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) {
@@ -514,5 +515,5 @@ SS.Art = (() => {
     return c;
   }
 
-  return { drawRobot, drawSlime, drawEnergy, makeBackground, loadSprites, shade, rr, ell, star, sprites, bgDirty: false };
+  return { spriteCount: () => Object.keys(sprites).length, drawRobot, drawSlime, drawEnergy, makeBackground, loadSprites, shade, rr, ell, star, sprites, bgDirty: false };
 })();

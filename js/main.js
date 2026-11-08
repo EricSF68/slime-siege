@@ -11,8 +11,8 @@ function loadSave() {
   catch (e) { return { unlocked: 1, endlessBest: 0, discovered: [], loadout: null, stars: {} }; }
 }
 function loadSettings() {
-  try { return Object.assign({ sfx: 0.8, music: 0.45, muted: false, autoCollect: false, reduceMotion: false, difficulty: 'normal' }, JSON.parse(localStorage.getItem(KEY + '.settings') || '{}')); }
-  catch (e) { return { sfx: 0.8, music: 0.45, muted: false, autoCollect: false, reduceMotion: false, difficulty: 'normal' }; }
+  try { return Object.assign({ sfx: 0.8, music: 0.45, muted: false, autoCollect: false, reduceMotion: false, difficulty: 'normal', gfx: 'illustrated' }, JSON.parse(localStorage.getItem(KEY + '.settings') || '{}')); }
+  catch (e) { return { sfx: 0.8, music: 0.45, muted: false, autoCollect: false, reduceMotion: false, difficulty: 'normal', gfx: 'illustrated' }; }
 }
 SS.save = loadSave();
 SS.settings = loadSettings();
@@ -293,7 +293,14 @@ $('#p-restart').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelId
 $('#p-quit').onclick = () => { SS.Audio.play('click'); quitToMap(); };
 
 // settings controls (shared in pause + settings screens)
+function updateGfxNote() {
+  const n = SS.Art.spriteCount();
+  const el = $('#gfx-note'); if (!el) return;
+  el.textContent = n ? (SS.settings.gfx === 'illustrated' ? `Illustrated art is on for ${n} characters; the rest use Classic.` : 'Classic vector art for everything.')
+                     : 'Illustrated art isn\'t installed yet, so Classic is shown either way.';
+}
 function syncSettingsUI() {
+  updateGfxNote();
   document.querySelectorAll('[data-set]').forEach(el => {
     const k = el.dataset.set;
     if (el.type === 'checkbox') el.checked = !!SS.settings[k]; else el.value = SS.settings[k];
@@ -304,6 +311,7 @@ document.querySelectorAll('[data-set]').forEach(el => {
     const k = el.dataset.set;
     SS.settings[k] = el.type === 'checkbox' ? el.checked : (el.tagName === 'SELECT' ? el.value : parseFloat(el.value));
     SS.Audio.set(k, SS.settings[k]);
+    if (k === 'gfx') { SS.Art.bgDirty = true; updateGfxNote(); }
     SS.persist(); syncSettingsUI();
   });
 });
@@ -320,6 +328,20 @@ $('#st-reset').onclick = () => {
   if (!confirm('Erase all progress?')) return;
   SS.save = { unlocked: 1, endlessBest: 0, discovered: [], loadout: null, stars: {} }; SS.persist(); SS.Audio.play('click');
 };
+function buildHowTo() {
+  document.querySelectorAll('#howto .ht-icons').forEach(el => {
+    if (el.dataset.built) return; el.dataset.built = '1';
+    el.dataset.icons.split(',').forEach(tok => {
+      if (tok === 'energy') { const c = document.createElement('canvas'); const d = Math.min(2, devicePixelRatio || 1); c.width = c.height = 56 * d; c.style.width = c.style.height = '56px'; const g = c.getContext('2d'); g.scale(d, d); g.translate(28, 28); SS.Art.drawEnergy(g, 0, 1); el.appendChild(c); }
+      else if (tok.includes(':')) { const [k, id] = tok.split(':'); el.appendChild(iconCanvas(k, id, 56)); }
+      else el.insertAdjacentHTML('beforeend', `<span>${tok}</span>`);
+    });
+  });
+}
+let howtoFrom = 'title';
+$('#btn-howto').onclick = () => { SS.Audio.init(); SS.Audio.play('click'); howtoFrom = 'title'; buildHowTo(); show('howto'); };
+$('#p-howto').onclick = () => { SS.Audio.play('click'); howtoFrom = 'pause'; buildHowTo(); show('howto'); };
+$('#ht-back').onclick = () => { SS.Audio.play('click'); show(battle ? howtoFrom : 'title'); };
 $('#p-almanac').onclick = () => { SS.Audio.play('click'); buildAlmanac('robots'); show('almanac'); };
 document.querySelectorAll('#almanac .tab').forEach(t => t.onclick = () => { SS.Audio.play('click'); buildAlmanac(t.dataset.tab); });
 $('#btn-fullscreen').onclick = () => {
