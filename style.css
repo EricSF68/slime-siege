@@ -109,3 +109,24 @@ button.danger { background:#5a1f24; border-color:#a0404a; }
 .ht-icons { display:flex; align-items:center; gap:2px; flex:0 0 auto; font-weight:900; font-size:20px; color:var(--muted); }
 @media (max-height:500px) { .howto { max-height:calc(100dvh - 140px); } #howto h2 { font-size:20px; } }
 @media (max-width:640px) { .ht-fig { flex-direction:column; align-items:flex-start; } }
+
+/* staging: loadout docked left so the containment hall stays visible */
+#overlay.docked { background:transparent; justify-content:flex-start; pointer-events:none; }
+#overlay.docked .screen { pointer-events:auto; max-width:min(560px,58vw); background:rgba(14,20,34,.92); }
+#overlay.docked .pool { width:min(500px,52vw); }
+.pcard { position:relative; }
+.pcard.dup { border-color:#b48cff; box-shadow:0 0 0 2px rgba(180,140,255,.35); }
+.pcard .x2 { position:absolute; top:4px; right:6px; font-size:12px; font-weight:900; color:#b48cff; }
+/* end-of-level stats */
+.end-stats { width:min(620px,86vw); }
+.end-stats:empty { display:none; }
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:6px; }
+.stat-grid div { background:#121a2a; border-radius:8px; padding:6px 10px; display:flex; flex-direction:column; }
+.stat-grid span { font-size:12px; color:var(--muted); } .stat-grid b { font-size:18px; font-variant-numeric:tabular-nums; }
+.dmg { margin-top:8px; background:#121a2a; border-radius:8px; padding:6px 10px; }
+.dmg summary { cursor:pointer; font-weight:700; min-height:32px; display:flex; align-items:center; }
+.dmg .bar { display:grid; grid-template-columns:120px 1fr 70px; align-items:center; gap:8px; font-size:13px; margin:4px 0; }
+.dmg .bar i { display:block; height:10px; border-radius:5px; background:linear-gradient(90deg,#3ad0ff,#7dff8a); }
+.dmg .bar b { text-align:right; font-variant-numeric:tabular-nums; }
+.recipe .lock { color:#c9d1e0; font-weight:700; } .recipe .found { color:#7dff8a; font-weight:700; }
+@media (max-height:500px) { #overlay.docked .screen { max-width:62vw; } .stat-grid { grid-template-columns:repeat(5,1fr); } .stat-grid b { font-size:15px; } .stat-grid div { padding:4px 6px; } }

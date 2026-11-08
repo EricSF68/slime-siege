@@ -53,8 +53,11 @@ function toLogical(e) {
   return { x: (e.clientX - r.left - view.ox) / view.s, y: (e.clientY - r.top - view.oy) / view.s };
 }
 
-let bg = null;
-function getBg() { if (!bg || SS.Art.bgDirty) { bg = SS.Art.makeBackground(); SS.Art.bgDirty = false; } return bg; }
+const bgCache = {};
+function getBg(variant = 'day') {
+  if (SS.Art.bgDirty) { for (const k in bgCache) delete bgCache[k]; SS.Art.bgDirty = false; }
+  return bgCache[variant] || (bgCache[variant] = SS.Art.makeBackground(variant));
+}
 
 // ---------- state ----------
 let battle = null, paused = false, lastLevelIdx = 0;
@@ -80,7 +83,7 @@ function draw() {
   ctx.fillStyle = '#0b0f18'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(view.dpr * view.s, 0, 0, view.dpr * view.s, view.dpr * view.ox, view.dpr * view.oy);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
-  if (battle) battle.render(ctx, getBg(), rt);
+  if (battle) battle.render(ctx, getBg(battle.level.night ? 'night' : 'day'), rt);
   else drawMenuBackdrop();
   if (params.get('debug') === '1') { ctx.fillStyle = '#0f0'; ctx.font = '14px monospace'; ctx.textAlign = 'left'; ctx.fillText(fps + ' fps', 8, H - 8); }
   ctx.restore();
@@ -138,9 +141,11 @@ window.addEventListener('keydown', e => {
   if (!battle || (battle.state !== 'play' && battle.state !== 'clear')) return;
   if (e.key === ' ' || e.key === 'p' || e.key === 'P' || e.key === 'Escape' && paused) { e.preventDefault(); SS.togglePause(); return; }
   if (paused) return;
-  if (e.key >= '1' && e.key <= '9') { battle.selectCard(+e.key - 1); }
+  if (e.key >= '0' && e.key <= '9') { battle.selectCard(e.key === '0' ? 9 : +e.key - 1); }
+  else if (e.key === 'g' || e.key === 'G') battle.selectTool('grab');
+  else if (e.key === 't' || e.key === 'T') battle.selectTool('beam');
   else if (e.key === 'w' || e.key === 'W' || e.key === 'r' || e.key === 'R') { battle.selected = battle.selected === 'wrench' ? null : 'wrench'; }
-  else if (e.key === 'Escape') battle.selected = null;
+  else if (e.key === 'Escape') { battle.selected = null; battle.held = null; }
   else if (e.key === 'f' || e.key === 'F') SS.toggleSpeed();
 });
 
@@ -181,12 +186,21 @@ function levelObj(i) {
   if (i === 'endless') return Object.assign({ label: '' }, SS.ENDLESS);
   return Object.assign({ label: `${i + 1}.` }, SS.LEVELS[i]);
 }
+function battleOpts(i, intro) {
+  return { seed: params.get('seed') ? +params.get('seed') : undefined, intro,
+    grabber: SS.toolUnlocked('grabber', i), beam: SS.toolUnlocked('beam', i) };
+}
 function prepLevel(i) {
   pendingLevel = i;
   const L = levelObj(i);
   const avail = i === 0 ? SS.LEVELS[0].cards : unlockedUnits();
-  if (avail.length <= SS.MAX_SLOTS) { startLevel(i, avail); return; }
-  // loadout picker
+  // staging: the camera looks at the containment hall while you choose
+  lastLevelIdx = i;
+  battle = new SS.Battle(L, [], battleOpts(i, avail.length < SS.MAX_SLOTS ? 'auto' : 'loadout'));
+  SS.battle = battle; paused = false; SS.speed = 1; acc = 0;
+  SS.Audio.init(); SS.Audio.playMusic('menu');
+  if (avail.length < SS.MAX_SLOTS) { beginBattle(i, avail); return; }
+  // loadout picker (docked so the waiting slimes stay visible)
   const prev = (SS.save.loadout || []).filter(id => avail.includes(id));
   chosen = prev.length ? prev.slice(0, SS.MAX_SLOTS) : avail.slice(0, SS.MAX_SLOTS);
   $('#lo-title').textContent = (L.label ? L.label + ' ' : '') + L.name;
@@ -194,19 +208,22 @@ function prepLevel(i) {
   L.types.concat(L.boss ? ['king'] : []).forEach(t => en.appendChild(iconCanvas('s', t, 56)));
   renderLoadout(avail);
   show('loadout');
+  $('#overlay').classList.add('docked');
 }
 function renderLoadout(avail) {
   const pool = $('#lo-pool'); pool.innerHTML = '';
   avail.forEach(id => {
     const b = document.createElement('button');
-    b.className = 'pcard' + (chosen.includes(id) ? ' on' : '');
+    const n = chosen.filter(x => x === id).length;
+    b.className = 'pcard' + (n ? ' on' : '') + (n > 1 ? ' dup' : '');
     b.appendChild(iconCanvas('r', id, 64));
-    b.insertAdjacentHTML('beforeend', `<span class="nm">${SS.UNITS[id].name}</span><span class="cs">${SS.UNITS[id].cost}</span>`);
+    b.insertAdjacentHTML('beforeend', `<span class="nm">${SS.UNITS[id].name}</span><span class="cs">${SS.UNITS[id].cost}${n > 1 ? ` + ${SS.UNITS[id].cost * 2}` : ''}</span>${n > 1 ? '<span class="x2">×2</span>' : ''}`);
+    b.title = 'Tap: add · tap again: add a second copy (costs 2×) · tap again: remove';
     b.onclick = () => {
       SS.Audio.play('click');
-      if (chosen.includes(id)) chosen = chosen.filter(x => x !== id);
-      else if (chosen.length < SS.MAX_SLOTS) chosen.push(id);
-      else { SS.Audio.play('invalid'); return; }
+      if (n === 0) { if (chosen.length < SS.MAX_SLOTS) chosen.push(id); else { SS.Audio.play('invalid'); return; } }
+      else if (n === 1 && chosen.length < SS.MAX_SLOTS) chosen.push(id);
+      else chosen = chosen.filter(x => x !== id);
       renderLoadout(avail);
     };
     pool.appendChild(b);
@@ -214,15 +231,27 @@ function renderLoadout(avail) {
   $('#lo-count').textContent = `${chosen.length}/${SS.MAX_SLOTS}`;
   $('#lo-go').disabled = chosen.length === 0;
 }
-$('#lo-go').onclick = () => { SS.Audio.play('click'); SS.save.loadout = chosen.slice(); SS.persist(); startLevel(pendingLevel, chosen.slice()); };
-$('#lo-back').onclick = () => { SS.Audio.play('click'); battle = null; buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); };
+$('#lo-go').onclick = () => { SS.Audio.play('click'); SS.save.loadout = chosen.slice(); SS.persist(); beginBattle(pendingLevel, chosen.slice()); };
+$('#lo-back').onclick = () => { SS.Audio.play('click'); battle = null; $('#overlay').classList.remove('docked'); buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); };
+
+const sortCards = cards => cards.slice().sort((a, b) => SS.BASE_ORDER.indexOf(a) - SS.BASE_ORDER.indexOf(b));
+function beginBattle(i, cards) {               // leave the staging view: pan back, count down, play
+  lastLevelIdx = i; SS.lastCards = cards;
+  $('#overlay').classList.remove('docked');
+  show(null);
+  if (!battle || battle.state !== 'intro') battle = new SS.Battle(levelObj(i), [], battleOpts(i, 'loadout'));
+  battle.setCards(sortCards(cards));
+  battle.go();
+  SS.battle = battle;
+  const L = levelObj(i);
+  SS.Audio.playMusic(L.boss ? 'boss' : 'battle');
+  if (L.boss) setTimeout(() => SS.Audio.playMusic('battle'), 10);
+}
 
 function startLevel(i, cards) {
   lastLevelIdx = i; SS.lastCards = cards;
   const L = levelObj(i);
-  const order = SS.BASE_ORDER;
-  cards = cards.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  battle = new SS.Battle(L, cards, { seed: params.get('seed') ? +params.get('seed') : undefined });
+  battle = new SS.Battle(L, sortCards(cards), Object.assign(battleOpts(i, SS.skipIntros ? null : 'auto')));
   SS.battle = battle;
   paused = false; SS.speed = 1; acc = 0;
   show(null);
@@ -237,7 +266,7 @@ SS.togglePause = (force) => {
   paused = force === true ? true : !paused;
   if (paused) { syncSettingsUI(); show('pause'); } else show(null);
 };
-SS.toggleSpeed = () => { SS.speed = SS.speed === 1 ? 2 : 1; };
+SS.toggleSpeed = () => { SS.speed = SS.speed === 1 ? 2 : SS.speed === 2 ? 0.5 : 1; };
 SS.isPaused = () => paused;
 
 SS.onDiscover = id => {
@@ -257,6 +286,7 @@ SS.onBattleEnd = (won, b) => {
       $('#end-msg').textContent = `You survived ${waves} wave${waves === 1 ? '' : 's'}.${best ? ' New best!' : ` Best: ${SS.save.endlessBest}.`}`;
       $('#end-next').style.display = 'none';
       $('#end-unlock').innerHTML = '';
+      renderStats(b, false);
       show('end'); return;
     }
     const idx = lastLevelIdx;
@@ -267,27 +297,39 @@ SS.onBattleEnd = (won, b) => {
       if (newly) SS.save.unlocked = idx + 2;
       SS.persist();
       $('#end-title').textContent = idx === SS.LEVELS.length - 1 ? 'The King Has Fallen!' : 'Level Clear!';
-      let msg = `Slimes destroyed: ${b.stats.kills} · Fusions: ${b.stats.fused}`;
+      let msg = '';
       if (newly && L.unlock) {
         $('#end-unlock').appendChild(iconCanvas('r', L.unlock, 96));
         $('#end-unlock').insertAdjacentHTML('beforeend', `<div><b>New robot: ${SS.UNITS[L.unlock].name}</b><br>${SS.UNITS[L.unlock].desc}</div>`);
       }
-      if (idx === SS.LEVELS.length - 1) msg += ' · Endless mode unlocked!';
+      if (idx === SS.LEVELS.length - 1) msg = 'Endless mode unlocked!';
+      if (idx === 8 && newly) msg = 'Tier-3 fusions unlocked!';
       $('#end-msg').textContent = msg;
       $('#end-next').style.display = idx < SS.LEVELS.length - 1 ? '' : 'none';
     } else {
       $('#end-title').textContent = 'The Slimes Got In!';
-      $('#end-msg').textContent = 'Your base has been slimed. Try a different build or more fusions.';
+      $('#end-msg').textContent = 'A slime reached the core. Try a different build, more fusions, or the Grabber.';
       $('#end-next').style.display = 'none';
     }
+    renderStats(b, won);
     show('end');
-  }, won ? 900 : 1500);
+  }, 50);
 };
+function renderStats(b, won) {
+  const st = b.stats, mins = Math.floor(b.time / 60), secs = Math.floor(b.time % 60);
+  const waves = b.level.endless ? `${Math.max(0, b.waveIdx)}` : `${Math.max(0, b.waveIdx + (won ? 1 : 0))}/${b.totalWaves}`;
+  const cells = [['Time', `${mins}:${String(secs).padStart(2, '0')}`], ['Waves', waves], ['Slimes destroyed', st.kills], ['Damage dealt', Math.round(st.damage).toLocaleString()],
+    ['Energy collected', st.energyCollected.toLocaleString()], ['Energy spent', st.energySpent.toLocaleString()], ['Robots built', st.placed], ['Fusions', st.fused], ['Robots lost', st.lost], ['Robots removed', st.removed]];
+  const top = Object.entries(st.byUnit).filter(([k]) => SS.UNITS[k]).sort((a, c) => c[1] - a[1]).slice(0, 5);
+  const max = top.length ? top[0][1] : 1;
+  $('#end-stats').innerHTML = `<div class="stat-grid">${cells.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>` +
+    (top.length ? `<details class="dmg"><summary>Damage by robot</summary>${top.map(([k, v]) => `<div class="bar"><span>${SS.UNITS[k].name}</span><i style="width:${Math.max(4, v / max * 100)}%"></i><b>${Math.round(v).toLocaleString()}</b></div>`).join('')}</details>` : '');
+}
 $('#end-retry').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelIdx, SS.lastCards); };
 $('#end-next').onclick = () => { SS.Audio.play('click'); battle = null; SS.Audio.playMusic('menu'); prepLevel(lastLevelIdx + 1); };
 $('#end-map').onclick = () => { SS.Audio.play('click'); quitToMap(); };
 
-function quitToMap() { battle = null; SS.battle = null; paused = false; buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); }
+function quitToMap() { $('#overlay').classList.remove('docked'); battle = null; SS.battle = null; paused = false; buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); }
 $('#p-resume').onclick = () => { SS.Audio.play('click'); SS.togglePause(false); };
 $('#p-restart').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelIdx, SS.lastCards); };
 $('#p-quit').onclick = () => { SS.Audio.play('click'); quitToMap(); };
@@ -367,10 +409,15 @@ function buildAlmanac(tab) {
   document.querySelectorAll('#almanac .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
   const list = $('#al-list'); list.innerHTML = '';
   const detail = $('#al-detail');
+  const fc = $('#al-count');
+  if (fc) fc.textContent = tab === 'fusions' ? `${SS.FUSION_LIST.filter(f => SS.save.discovered.includes(f[2])).length}/${SS.FUSION_LIST.length} fusions found` : '';
   const unlocked = unlockedUnits();
   let entries = [];
   if (tab === 'robots') entries = SS.BASE_ORDER.map(id => ({ id, kind: 'r', known: unlocked.includes(id) }));
-  else if (tab === 'fusions') entries = SS.FUSION_LIST.map(([a, b, r]) => ({ id: r, kind: 'r', known: (unlocked.includes(a) || a === 'twin') && unlocked.includes(b) }));
+  else if (tab === 'fusions') {
+    const can = id => unlocked.includes(id) || (SS.UNITS[id].from && SS.UNITS[id].from.every(can));
+    entries = SS.FUSION_LIST.map(([a, b, r]) => ({ id: r, kind: 'r', known: can(a) && can(b), found: SS.save.discovered.includes(r) }));
+  }
   else entries = Object.keys(SS.SLIMES).map(id => ({ id, kind: 's', known: true }));
   const showDetail = (e) => {
     detail.innerHTML = '';
@@ -379,7 +426,7 @@ function buildAlmanac(tab) {
     const d = e.kind === 'r' ? SS.UNITS[e.id] : SS.SLIMES[e.id];
     let html = `<h3>${d.name}</h3><p>${d.desc}</p>`;
     if (e.kind === 'r') {
-      if (d.from) html += `<p class="recipe">Recipe: <b>${SS.UNITS[d.from[0]].name}</b> + <b>${SS.UNITS[d.from[1]].name}</b><br><span class="muted">Place either robot onto the other.</span></p>`;
+      if (d.from) html += `<p class="recipe">Recipe: <b>${SS.UNITS[d.from[0]].name}</b> + <b>${SS.UNITS[d.from[1]].name}</b><br><span class="muted">Place either robot onto the other, or use the Grabber.</span>${SS.fusionLocked(e.id) ? '<br><span class="lock">Locked until you clear Level 9</span>' : ''}${SS.save.discovered.includes(e.id) ? '<br><span class="found">✓ Found</span>' : ''}</p>`;
       else html += `<p>Cost: <b>${d.cost}</b> · Recharge: <b>${d.cd >= 30 ? 'Slow' : 'Fast'}</b></p>`;
       html += `<p class="muted">Toughness: ${d.hp >= 9999 ? '—' : d.hp}</p>`;
       if (!d.from) {
@@ -411,7 +458,8 @@ SS.Art.loadSprites();
 // test hooks
 SS.test = {
   get battle() { return battle; },
-  start: (i, cards) => startLevel(i, cards || (i === 0 ? SS.LEVELS[0].cards : unlockedUnits().slice(0, SS.MAX_SLOTS))),
+  start: (i, cards) => { SS.skipIntros = true; startLevel(i, cards || (i === 0 ? SS.LEVELS[0].cards : unlockedUnits().slice(0, SS.MAX_SLOTS))); SS.skipIntros = false; },
+  prep: i => prepLevel(i),
   step: (sec) => { if (!battle) return; const n = Math.round(sec / SS.DT); for (let k = 0; k < n && (battle.state === 'play' || battle.state === 'clear'); k++) battle.update(SS.DT); },
   quit: quitToMap,
   view: () => view,

@@ -39,7 +39,7 @@
   <section class="screen" id="loadout">
     <h2 id="lo-title">Loadout</h2>
     <div class="lo-row"><span class="muted">Slimes spotted:</span><div id="lo-enemies" class="enemies"></div></div>
-    <p class="muted">Pick up to 7 robots <b id="lo-count"></b></p>
+    <p class="muted">Pick up to 10 cards. Tap again for a second copy (2× cost). <b id="lo-count"></b></p>
     <div id="lo-pool" class="pool"></div>
     <div class="row">
       <button id="lo-back" class="back">Back</button>
@@ -76,7 +76,7 @@
       <label class="chk"><input type="checkbox" data-set="autoCollect"> Auto-collect energy</label>
       <label class="chk"><input type="checkbox" data-set="reduceMotion"> Reduce screen shake</label>
     </div>
-    <p class="muted small">Desktop keys: 1–9 pick robots · W remove · F speed · Space pause · Esc cancel</p>
+    <p class="muted small">Desktop keys: 1–9, 0 pick robots · W remove · G grab · T beam · F speed (1× / 2× / ½×) · Space pause · Esc cancel</p>
     <div class="row">
       <button id="st-back" class="back">Back</button>
       <button id="st-reset" class="danger">Reset progress</button>
@@ -105,15 +105,27 @@
         <div class="ht-icons" data-icons="r:blaster,+,r:blaster,=,r:twin"></div>
         <div>
           <h3>Fusion</h3>
-          <p>Place a robot on top of another to fuse them into something stronger. Squares that glow <b style="color:var(--gold)">gold</b> can take the selected robot. Fusions keep going: a Blaster on a Twin Blaster makes a Gatling Bot. All 20 recipes are in the Almanac.</p>
+          <p>Place a robot on top of another to fuse them into something stronger. Squares that glow <b style="color:var(--gold)">gold</b> can take the selected robot; a padlock means that fusion isn't unlocked yet. Fusions keep going: a Blaster on a Twin Blaster makes a Gatling Bot, and three tier-3 fusions unlock after Level 9. A Bulwark placed on a damaged wall repairs it. All 23 recipes are in the Almanac.</p>
         </div>
       </div>
       <div class="ht-block ht-fig">
         <div class="ht-icons" data-icons="s:capped,s:shield,s:hopper"></div>
         <div>
           <h3>Slimes</h3>
-          <p>Each slime eats the first robot in its way. Some wear armor, some carry shields that block straight shots (lob or zap over them), and Hoppers jump your first robot. Check the Almanac for each one's trick.</p>
+          <p>Each slime eats the first robot in its way. Some wear armor, some carry shields that block straight shots (lob or zap over them), Hoppers jump your first robot, Spitters shoot from range, and Hotheads charge once their pot breaks. Check the Almanac for each one's trick.</p>
         </div>
+      </div>
+      <div class="ht-block">
+        <h3>Grabber and Tractor Beam</h3>
+        <p><b>Grabber</b> (unlocks on Level 4): tap a robot to lift it, then tap an empty square to move it, or another robot to fuse the two. It recharges for 10 seconds. <b>Tractor Beam</b> (Level 6): tap a slime to drag it into the next lane. It recharges for 40 seconds.</p>
+      </div>
+      <div class="ht-block">
+        <h3>Loadout</h3>
+        <p>Bring up to 10 cards. Tap a robot once to add it, again to add a <b>second copy</b> (it costs double but has its own recharge), and a third time to remove it. The <b>Supply Crate</b> opens into a random robot, sometimes a fusion.</p>
+      </div>
+      <div class="ht-block">
+        <h3>Scrap caps, scorch and night shifts</h3>
+        <p>When a slime's metal cap breaks it drops on the floor. Tap it, then tap a basic (unfused) robot to bolt it on as armor. Big bombs leave a scorched square you can't build on for about 20 seconds. On <b>Night Shift</b> levels less energy falls and scrap crates block some squares; clear them with Remove.</p>
       </div>
       <div class="ht-block">
         <h3>Sweepers and losing</h3>
@@ -121,7 +133,7 @@
       </div>
       <div class="ht-block">
         <h3>Controls</h3>
-        <p><b>Touch or mouse:</b> tap cards, squares and energy. ⏸ pauses, 2× speeds up.<br><b>Keyboard:</b> 1–9 pick a robot · W remove tool · F speed · Space pause · Esc cancel.</p>
+        <p><b>Touch or mouse:</b> tap cards, squares and energy. ⏸ pauses; the speed button cycles 1×, 2× and ½×. Tap during the countdown to skip it.<br><b>Keyboard:</b> 1–9, 0 pick a robot · W remove · G grab · T beam · F speed · Space pause · Esc cancel.</p>
       </div>
       <div class="ht-block">
         <h3>Tips</h3>
@@ -138,6 +150,7 @@
       <button class="tab" data-tab="fusions">Fusions</button>
       <button class="tab" data-tab="slimes">Slimes</button>
     </div>
+    <p id="al-count" class="muted small"></p>
     <div class="al-body">
       <div id="al-list" class="al-list"></div>
       <div id="al-detail" class="al-detail"></div>
@@ -149,6 +162,7 @@
     <h2 id="end-title"></h2>
     <p id="end-msg"></p>
     <div id="end-unlock" class="unlock"></div>
+    <div id="end-stats" class="end-stats"></div>
     <div class="row">
       <button id="end-map" class="back">Map</button>
       <button id="end-retry">Retry</button>
