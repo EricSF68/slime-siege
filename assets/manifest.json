@@ -1,5 +1,26 @@
 {
-  "sprites": [],
+  "sprites": [
+    "acid",
+    "blaster",
+    "blob",
+    "bomb",
+    "brute",
+    "bulwark",
+    "capped",
+    "cryo",
+    "dasher",
+    "flamer",
+    "hopper",
+    "iron",
+    "king",
+    "lobber",
+    "mine",
+    "mini",
+    "shield",
+    "spark",
+    "splitter",
+    "tesla"
+  ],
   "sfx": [
     "armorHit",
     "chomp",

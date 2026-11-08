@@ -11,6 +11,8 @@ SS.Art = (() => {
     }));
   }
 
+  const SPRITE_H = { bulwark: 100, mine: 50, bomb: 84, spark: 96, tesla: 112, cryo: 100 };
+  const SLIME_K = { dasher: 0.62, hopper: 1.15, shield: 1.0, brute: 1.0, king: 1.0, acid: 0.95 };
   const useSprite = id => !!sprites[id] && (!SS.settings || SS.settings.gfx !== 'classic');
   function shade(hex, amt) {
     let r, g, b;
@@ -181,7 +183,8 @@ SS.Art = (() => {
     if (o.alpha != null) ctx.globalAlpha *= o.alpha;
     if (useSprite(id)) {
       const img = sprites[id];
-      const h = 100, w = img.width / img.height * h;
+      const h = SPRITE_H[id] || 100, w = img.width / img.height * h;
+      if (o.armed === false) ctx.globalAlpha *= 0.55;   // unarmed mine reads as dimmed
       ctx.drawImage(img, -w / 2, 44 - h, w, h);
     } else {
       const bob = (p.body === 'wall' || p.body === 'mine' || p.body === 'bomb') ? 0 : Math.sin(t * 3 + (o.phase || 0)) * 1.5;
@@ -312,8 +315,12 @@ SS.Art = (() => {
     const w = R * 1.15 * (1 + sq) * (1 + melt * 0.6), h = R * 1.55 * (1 - sq) * (1 - melt * 0.85);
     // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ell(ctx, 0, 2, w * 1.05, 7 * d.size); ctx.fill();
-    if (useSprite(type)) {
-      const img = sprites[type]; const hh = R * 3.2, ww = img.width / img.height * hh;
+    // armored slimes fall back to the plain Blob art once their armor is gone
+    let spriteKey = type;
+    if ((type === 'capped' || type === 'iron') && !(o.armor > 0)) spriteKey = 'blob';
+    if (type === 'shield' && !(o.front > 0)) spriteKey = 'blob';
+    if (useSprite(spriteKey)) {
+      const img = sprites[spriteKey]; const hh = R * 3.0 * (SLIME_K[type] || 1), ww = img.width / img.height * hh;
       ctx.save(); ctx.scale(1 + sq, (1 - sq) * (1 - melt * 0.85)); ctx.drawImage(img, -ww / 2, -hh, ww, hh); ctx.restore();
     } else {
       let col = d.color;
