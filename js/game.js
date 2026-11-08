@@ -98,7 +98,7 @@ class Battle {
     const types = [...new Set(this.level.types.concat(this.level.boss ? ['king'] : []))];
     types.forEach((t, i) => {
       const king = t === 'king';
-      const slot = [[0, 1], [1, 2], [2, 1], [0, 3], [1, 4], [2, 3], [0, 0], [1, 0], [2, 4], [3, 2], [3, 0], [3, 4]][i % 12];
+      const slot = [[0, 2], [1, 3], [2, 2], [0, 4], [1, 1], [2, 4], [3, 3], [0, 1], [2, 1], [3, 2], [3, 4], [1, 4]][i % 12];
       this.preview.push({ type: t, def: SL[t], x: king ? WORLD_W - 170 : 1300 + slot[0] * 120 + (slot[1] % 2) * 30, row: king ? 2 : slot[1], phase: i * 1.7,
         armor: SL[t].armor || 0, front: SL[t].front || 0 });
     });
@@ -205,9 +205,10 @@ class Battle {
     if (!cur) { const b = this.blocked(r, c); return b ? { ok: false, why: b } : { ok: true, mode: 'place' }; }
     if (card.id === 'crate') return { ok: false, why: 'occupied' };
     const f = this.fusionFor(cur.id, card.id);
-    if (f && f.locked) return { ok: false, why: 'locked', result: f.result };
+    const canRepair = card.id === 'bulwark' && cur.def.parts.body === 'wall' && cur.hp < cur.maxHp;
+    if (f && f.locked) return canRepair ? { ok: true, mode: 'repair' } : { ok: false, why: 'locked', result: f.result };
     if (f) return { ok: true, mode: 'fuse', result: f.result };
-    if (card.id === 'bulwark' && cur.def.parts.body === 'wall' && cur.hp < cur.maxHp) return { ok: true, mode: 'repair' };
+    if (canRepair) return { ok: true, mode: 'repair' };
     return { ok: false, why: 'occupied' };
   }
   place(ci, r, c) {
@@ -279,6 +280,8 @@ class Battle {
     const u = this.grid[r][c];
     if (u) { this.removeUnit(u, false, 'wrench'); this.selected = null; return true; }
     if (this.debris[r][c]) {
+      if (this.energy < 25) { this.flashEnergy = 0.6; SS.Audio.play('invalid'); this.floatText(tileX(c), tileY(r) - 40, 'Clearing scrap costs 25', '#ffb070', 18); return false; }
+      this.energy -= 25; this.stats.energySpent += 25;
       this.debris[r][c] = 0; SS.Audio.play('unitDie'); this.selected = null;
       for (let i = 0; i < 14; i++) this.fx.push({ k: 'p', x: tileX(c) + this.rng.range(-25, 25), y: tileY(r), vx: this.rng.range(-140, 140), vy: this.rng.range(-240, -60), g: 600, life: 0.7, max: 0.7, color: i % 2 ? '#7a6248' : '#4a3a2a', size: 5 });
       return true;
@@ -531,7 +534,6 @@ class Battle {
     for (const u of this.units.slice()) {
       if (u.removed) continue;
       u.t += dt; if (u.flash > 0) u.flash -= dt; if (u.fireT > 0) u.fireT -= dt; if (u.prodGlow > 0) u.prodGlow -= dt;
-      if (u === this.held) continue;                    // lifted robots pause
       for (const b of u.beh) {
         switch (b.t) {
           case 'shoot': {
@@ -634,7 +636,7 @@ class Battle {
     const pick = this.rng.pick(pool.length ? pool : unlocked);
     this.removeUnit(u, true);
     const n = this.addUnit(pick, r, c);
-    if (U[pick].fusion && SS.onDiscover) SS.onDiscover(pick);
+    if (U[pick].fusion && !SS.fusionLocked(pick) && SS.onDiscover) SS.onDiscover(pick);
     SS.Audio.play('fuse');
     for (let i = 0; i < 14; i++) this.fx.push({ k: 'p', x: n.x + this.rng.range(-30, 30), y: n.y, vx: this.rng.range(-160, 160), vy: this.rng.range(-260, -80), g: 600, life: 0.7, max: 0.7, color: i % 2 ? '#b07a3a' : '#7a5228', size: 5 });
     this.floatText(n.x, n.y - 54, U[pick].name + '!', U[pick].fusion ? '#ffd84a' : '#fff');
@@ -650,7 +652,7 @@ class Battle {
     for (const r of rows) {
       if (r < 0 || r >= ROWS) continue;
       for (let c = 0; c < COLS; c++) {
-        const u = this.grid[r][c]; if (!u || u === this.held) continue;
+        const u = this.grid[r][c]; if (!u) continue;
         const left = BX + c * TW, right = left + TW;
         if (front < right - 18 && s.x > left + 10) return u;
       }
@@ -826,7 +828,7 @@ class Battle {
   collect(e) {
     if (e.collecting) return;
     if (e.kind === 'cap') {
-      e.done = true; this.heldCap = { kind: e.cap, val: e.val }; this.selected = 'cap';
+      e.done = true; this.held = null; this.heldCap = { kind: e.cap, val: e.val, x: e.x, y: e.y }; this.selected = 'cap';
       SS.Audio.play('select'); this.floatText(e.x, e.y - 30, 'Tap a basic robot', '#c9d1e0', 18);
       return;
     }
@@ -874,31 +876,46 @@ class Battle {
 
   // ---------- input ----------
   toolRect(k) { return HUD[k]; }
+  cardRect(i) {
+    const C = HUD.card0, n = Math.max(1, this.cards.length);
+    const span = HUD.wrench.x - 6 - C.x;                       // stretch cards when fewer than 10 are carried
+    const w = Math.min(110, Math.max(C.w, (span - C.gap * (n - 1)) / n));
+    const slots = this.cards.length < SS.MAX_SLOTS && w > C.w ? n : SS.MAX_SLOTS;
+    const ww = slots === SS.MAX_SLOTS ? C.w : w;
+    return { x: C.x + i * (ww + C.gap), y: C.y, w: ww, h: C.h, slots };
+  }
   hudHit(x, y) {
-    const C = HUD.card0;
+    if (y > 112) return null;
+    // generous hit areas: the whole tray height, and gaps count toward the nearest card
     for (let i = 0; i < this.cards.length; i++) {
-      const cx = C.x + i * (C.w + C.gap);
-      if (x >= cx && x <= cx + C.w && y >= C.y && y <= C.y + C.h) return { k: 'card', i };
+      const r = this.cardRect(i);
+      if (x >= r.x - HUD.card0.gap / 2 && x < r.x + r.w + HUD.card0.gap / 2) return { k: 'card', i };
     }
     for (const k of ['wrench', 'grab', 'beam']) {
       if (k !== 'wrench' && !this.tools[k]) continue;
-      const b = HUD[k]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { k };
+      const b = HUD[k]; if (x >= b.x - 2 && x <= b.x + b.w + 2) return { k };
     }
-    for (const k of ['speed', 'pause']) { const b = HUD[k]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { k }; }
+    for (const k of ['speed', 'pause']) { const b = HUD[k]; if (x >= b.x - 4 && x <= b.x + b.w + 4) return { k }; }
     return null;
   }
   selectCard(i) {
     if (i === this.selected) { this.selected = null; return; }
     const c = this.cards[i]; if (!c) return;
     if (c.cd > 0 || this.energy < c.cost) { SS.Audio.play('invalid'); if (this.energy < c.cost) this.flashEnergy = 0.6; return; }
-    this.held = null; this.heldCap = this.selected === 'cap' ? null : this.heldCap;
+    this.held = null; this.dropCap();
     this.selected = i; SS.Audio.play('select');
   }
   selectTool(k) {
     if (k !== 'wrench' && !this.tools[k]) return;
     if (this.selected === k) { this.selected = null; this.held = null; return; }
     if (this.toolCd[k] > 0) { SS.Audio.play('invalid'); return; }
-    this.held = null; this.selected = k; SS.Audio.play('select');
+    this.held = null; this.dropCap(); this.selected = k; SS.Audio.play('select');
+  }
+  cancel() { this.selected = null; this.held = null; this.dropCap(); }
+  dropCap() {                       // an unused scrap cap goes back on the floor instead of vanishing
+    if (!this.heldCap) return;
+    const c = this.heldCap; this.heldCap = null; if (this.selected === 'cap') this.selected = null;
+    this.pickups.push({ kind: 'cap', cap: c.kind, val: c.val, x: c.x, y: c.y, ty: c.y, vy: 0, life: 10, t: 1 });
   }
   pickupAt(x, y) {
     let best = null, bd = 52;
@@ -913,7 +930,9 @@ class Battle {
     if (this.state === 'clear' && this.trophy && Math.hypot(this.trophy.x - x, this.trophy.y - y) < 80) { this.collectTrophy(); return; }
     if (this.state !== 'play' && this.state !== 'clear') return;
     const h = this.hudHit(x, y);
-    const pk = h ? null : this.pickupAt(x, y);
+    const toolCell = (this.selected === 'grab' || this.selected === 'wrench' || this.selected === 'cap') && this.cellAt(x, y);
+    const toolHit = toolCell && (this.grid[toolCell.r][toolCell.c] || this.debris[toolCell.r][toolCell.c] || (this.selected === 'grab' && this.held));
+    const pk = h || toolHit ? null : this.pickupAt(x, y);
     if (pk && !(this.selected === 'cap')) { this.collect(pk); P.down = false; return; }
     if (h) {
       if (h.k === 'card') {
@@ -933,7 +952,7 @@ class Battle {
       return;
     }
     if (cell && this.selected != null) { this.applyAt(cell); P.down = false; return; }
-    if (!cell && y < BY && this.selected !== 'cap') { this.selected = null; this.held = null; }
+    if (!cell && y < BY) this.cancel();
   }
   applyAt(cell) {
     if (this.selected === 'wrench') this.wrench(cell.r, cell.c);
@@ -988,13 +1007,13 @@ class Battle {
       for (const u of this.units) {
         if (u === this.held) continue;
         const f = this.fusionFor(u.id, id);
-        const repair = id === 'bulwark' && typeof this.selected === 'number' && !f && u.def.parts.body === 'wall' && u.hp < u.maxHp;
+        const repair = id === 'bulwark' && typeof this.selected === 'number' && (!f || f.locked) && u.def.parts.body === 'wall' && u.hp < u.maxHp;
         if (!f && !repair) continue;
         const a = 0.35 + 0.25 * Math.sin(rt * 6);
-        ctx.strokeStyle = f && f.locked ? 'rgba(170,180,200,0.7)' : repair ? `rgba(125,255,138,${a + 0.3})` : `rgba(255,216,74,${a + 0.3})`;
+        ctx.strokeStyle = f && f.locked && !repair ? 'rgba(170,180,200,0.7)' : repair ? `rgba(125,255,138,${a + 0.3})` : `rgba(255,216,74,${a + 0.3})`;
         ctx.lineWidth = 4;
         SS.Art.rr(ctx, BX + u.c * TW + 4, BY + u.r * TH + 4, TW - 8, TH - 8, 10); ctx.stroke();
-        if (f && f.locked) this.drawPadlock(ctx, BX + u.c * TW + TW - 22, BY + u.r * TH + 22);
+        if (f && f.locked && !repair) this.drawPadlock(ctx, BX + u.c * TW + TW - 22, BY + u.r * TH + 22);
       }
     }
     if (this.selected === 'cap') {
@@ -1061,8 +1080,7 @@ class Battle {
       const a = this.state === 'intro' ? Math.min(1, this.introT * 2) : Math.max(0, 1 - this.introT * 2);
       ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const label = this.level.endless ? 'ENDLESS' : `LEVEL ${String(this.level.label || '').replace('.', '')}`;
-      const docked = typeof document !== 'undefined' && document.getElementById('overlay') && document.getElementById('overlay').classList.contains('docked');
-      if (docked) ctx.translate(310, 0);   // keep the title card clear of the loadout panel
+      if (SS.dockRight) { const cx = (SS.dockRight + W) / 2; ctx.translate(cx - W / 2, 0); const room = W - SS.dockRight; if (room < 560) { const k = Math.max(0.55, room / 560); ctx.translate(W / 2, 0); ctx.scale(k, k); ctx.translate(-W / 2, 0); } }
       ctx.font = '800 22px system-ui,sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.strokeText(label, W / 2, 46); ctx.fillStyle = '#9fe8ff'; ctx.fillText(label, W / 2, 46);
       ctx.font = '900 46px system-ui,sans-serif'; ctx.lineWidth = 8;
@@ -1352,23 +1370,24 @@ class Battle {
     ctx.fillStyle = '#fff'; ctx.font = '800 28px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(Math.floor(this.energy)), E.x + E.w / 2, E.y + 80);
     // card slots (empty frames for unused)
-    const C = HUD.card0;
-    for (let i = 0; i < SS.MAX_SLOTS; i++) {
-      const x = C.x + i * (C.w + C.gap), y = C.y, c = this.cards[i];
-      if (!c) { ctx.strokeStyle = 'rgba(90,115,160,0.45)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2; SS.Art.rr(ctx, x + 1, y + 1, C.w - 2, C.h - 2, 10); ctx.stroke(); ctx.setLineDash([]); continue; }
+    const C = HUD.card0, slots = this.cardRect(0).slots;
+    for (let i = 0; i < slots; i++) {
+      const R = this.cardRect(i), x = R.x, y = R.y, c = this.cards[i];
+      const Cw = R.w;
+      if (!c) { ctx.strokeStyle = 'rgba(90,115,160,0.45)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2; SS.Art.rr(ctx, x + 1, y + 1, Cw - 2, C.h - 2, 10); ctx.stroke(); ctx.setLineDash([]); continue; }
       const sel = this.selected === i;
       const afford = this.energy >= c.cost;
-      ctx.fillStyle = sel ? '#3b5a8a' : '#24324d'; SS.Art.rr(ctx, x, y + (sel ? 4 : 0), C.w, C.h, 10); ctx.fill();
+      ctx.fillStyle = sel ? '#3b5a8a' : '#24324d'; SS.Art.rr(ctx, x, y + (sel ? 4 : 0), Cw, C.h, 10); ctx.fill();
       ctx.strokeStyle = sel ? '#ffd84a' : c.dup ? '#b48cff' : '#4a5f88'; ctx.lineWidth = sel ? 3 : 2; ctx.stroke();
-      ctx.save(); ctx.beginPath(); ctx.rect(x + 2, y + 2, C.w - 4, C.h - 4); ctx.clip();
-      ctx.translate(x + C.w / 2, y + 46 + (sel ? 4 : 0)); SS.Art.drawRobot(ctx, c.id, 0, { scale: 0.55, noBadge: true }); ctx.restore();
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 2, y + C.h - 24 + (sel ? 4 : 0), C.w - 4, 22);
+      ctx.save(); ctx.beginPath(); ctx.rect(x + 2, y + 2, Cw - 4, C.h - 4); ctx.clip();
+      ctx.translate(x + Cw / 2, y + 46 + (sel ? 4 : 0)); SS.Art.drawRobot(ctx, c.id, 0, { scale: 0.55, noBadge: true }); ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 2, y + C.h - 24 + (sel ? 4 : 0), Cw - 4, 22);
       ctx.fillStyle = afford ? '#ffe94a' : '#ff7070'; ctx.font = '800 17px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(c.cost), x + C.w / 2, y + C.h - 13 + (sel ? 4 : 0));
-      if (c.dup) { ctx.fillStyle = '#b48cff'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'right'; ctx.fillText('×2', x + C.w - 5, y + 11); }
+      ctx.fillText(String(c.cost), x + Cw / 2, y + C.h - 13 + (sel ? 4 : 0));
+      if (c.dup) { ctx.fillStyle = '#b48cff'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'right'; ctx.fillText('×2', x + Cw - 5, y + 11); }
       if (c.cd > 0 || !afford) {
-        ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y, C.w, C.h);
-        if (c.cd > 0) { const f = c.cd / c.cdMax; ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y, C.w, C.h * f); }
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y, Cw, C.h);
+        if (c.cd > 0) { const f = c.cd / c.cdMax; ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y, Cw, C.h * f); }
       }
       if (keys) { ctx.fillStyle = '#9ab'; ctx.font = '600 11px system-ui'; ctx.textAlign = 'left'; ctx.fillText(String((i + 1) % 10), x + 5, y + 11); }
     }

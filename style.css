@@ -130,3 +130,20 @@ button.danger { background:#5a1f24; border-color:#a0404a; }
 .dmg .bar b { text-align:right; font-variant-numeric:tabular-nums; }
 .recipe .lock { color:#c9d1e0; font-weight:700; } .recipe .found { color:#7dff8a; font-weight:700; }
 @media (max-height:500px) { #overlay.docked .screen { max-width:62vw; } .stat-grid { grid-template-columns:repeat(5,1fr); } .stat-grid b { font-size:15px; } .stat-grid div { padding:4px 6px; } }
+
+#end-msg:empty { display:none; }
+.dmg summary { min-height:44px; }
+@media (max-height:500px) {
+  #overlay.docked .lo-row { display:none; }
+  #overlay.docked .pool { grid-template-columns:repeat(5,1fr); gap:4px; }
+  #overlay.docked .pcard { padding:3px; }
+  #overlay.docked .pcard canvas { width:36px !important; height:36px !important; }
+  #overlay.docked .pcard .nm { font-size:10px; }
+  #overlay.docked #lo-title { font-size:18px; }
+  #overlay.docked .screen > p { font-size:12px; margin:0; }
+}
+@media (max-height:420px) {
+  .stat-grid { grid-template-columns:repeat(5,1fr); gap:4px; }
+  .stat-grid div { padding:3px 6px; } .stat-grid span { font-size:10px; } .stat-grid b { font-size:14px; }
+  #end h2 { font-size:20px; }
+}

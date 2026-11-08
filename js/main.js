@@ -133,7 +133,7 @@ const up = e => {
 canvas.addEventListener('pointerup', up);
 canvas.addEventListener('pointercancel', e => { if (e.pointerId === activePointer) { activePointer = null; if (battle) { battle.pointer.down = false; battle.pointer.dragging = false; } } });
 canvas.addEventListener('pointerleave', e => { if (battle && !battle.pointer.down && e.pointerType === 'mouse') { battle.pointer.x = -1; battle.pointer.y = -1; } });
-canvas.addEventListener('contextmenu', e => { e.preventDefault(); if (battle) battle.selected = null; });
+canvas.addEventListener('contextmenu', e => { e.preventDefault(); if (battle && battle.cancel) battle.cancel(); });
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
 
@@ -144,8 +144,8 @@ window.addEventListener('keydown', e => {
   if (e.key >= '0' && e.key <= '9') { battle.selectCard(e.key === '0' ? 9 : +e.key - 1); }
   else if (e.key === 'g' || e.key === 'G') battle.selectTool('grab');
   else if (e.key === 't' || e.key === 'T') battle.selectTool('beam');
-  else if (e.key === 'w' || e.key === 'W' || e.key === 'r' || e.key === 'R') { battle.selected = battle.selected === 'wrench' ? null : 'wrench'; }
-  else if (e.key === 'Escape') { battle.selected = null; battle.held = null; }
+  else if (e.key === 'w' || e.key === 'W' || e.key === 'r' || e.key === 'R') battle.selectTool('wrench');
+  else if (e.key === 'Escape') battle.cancel();
   else if (e.key === 'f' || e.key === 'F') SS.toggleSpeed();
 });
 
@@ -199,7 +199,7 @@ function prepLevel(i) {
   battle = new SS.Battle(L, [], battleOpts(i, avail.length < SS.MAX_SLOTS ? 'auto' : 'loadout'));
   SS.battle = battle; paused = false; SS.speed = 1; acc = 0;
   SS.Audio.init(); SS.Audio.playMusic('menu');
-  if (avail.length < SS.MAX_SLOTS) { beginBattle(i, avail); return; }
+  if (avail.length < SS.MAX_SLOTS) { beginBattle(i, avail, true); return; }
   // loadout picker (docked so the waiting slimes stay visible)
   const prev = (SS.save.loadout || []).filter(id => avail.includes(id));
   chosen = prev.length ? prev.slice(0, SS.MAX_SLOTS) : avail.slice(0, SS.MAX_SLOTS);
@@ -209,7 +209,15 @@ function prepLevel(i) {
   renderLoadout(avail);
   show('loadout');
   $('#overlay').classList.add('docked');
+  requestAnimationFrame(updateDock);
 }
+function updateDock() {                         // logical x of the docked panel's right edge, for the title card
+  const el = document.querySelector('#loadout');
+  if (!el || !$('#overlay').classList.contains('docked')) { SS.dockRight = 0; return; }
+  const r = el.getBoundingClientRect(), cr = canvas.getBoundingClientRect();
+  SS.dockRight = Math.max(0, (r.right - cr.left - view.ox) / view.s);
+}
+window.addEventListener('resize', () => requestAnimationFrame(updateDock));
 function renderLoadout(avail) {
   const pool = $('#lo-pool'); pool.innerHTML = '';
   avail.forEach(id => {
@@ -232,16 +240,16 @@ function renderLoadout(avail) {
   $('#lo-go').disabled = chosen.length === 0;
 }
 $('#lo-go').onclick = () => { SS.Audio.play('click'); SS.save.loadout = chosen.slice(); SS.persist(); beginBattle(pendingLevel, chosen.slice()); };
-$('#lo-back').onclick = () => { SS.Audio.play('click'); battle = null; $('#overlay').classList.remove('docked'); buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); };
+$('#lo-back').onclick = () => { SS.Audio.play('click'); battle = null; SS.battle = null; SS.dockRight = 0; $('#overlay').classList.remove('docked'); buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); };
 
 const sortCards = cards => cards.slice().sort((a, b) => SS.BASE_ORDER.indexOf(a) - SS.BASE_ORDER.indexOf(b));
-function beginBattle(i, cards) {               // leave the staging view: pan back, count down, play
+function beginBattle(i, cards, auto) {         // leave the staging view: pan back, count down, play
   lastLevelIdx = i; SS.lastCards = cards;
-  $('#overlay').classList.remove('docked');
+  $('#overlay').classList.remove('docked'); SS.dockRight = 0;
   show(null);
-  if (!battle || battle.state !== 'intro') battle = new SS.Battle(levelObj(i), [], battleOpts(i, 'loadout'));
+  if (!battle || battle.state !== 'intro') battle = new SS.Battle(levelObj(i), [], battleOpts(i, auto ? 'auto' : 'loadout'));
   battle.setCards(sortCards(cards));
-  battle.go();
+  if (!auto) battle.go();                      // 'auto' intros hold on the hall, then pan back on their own
   SS.battle = battle;
   const L = levelObj(i);
   SS.Audio.playMusic(L.boss ? 'boss' : 'battle');
@@ -317,8 +325,8 @@ SS.onBattleEnd = (won, b) => {
 };
 function renderStats(b, won) {
   const st = b.stats, mins = Math.floor(b.time / 60), secs = Math.floor(b.time % 60);
-  const waves = b.level.endless ? `${Math.max(0, b.waveIdx)}` : `${Math.max(0, b.waveIdx + (won ? 1 : 0))}/${b.totalWaves}`;
-  const cells = [['Time', `${mins}:${String(secs).padStart(2, '0')}`], ['Waves', waves], ['Slimes destroyed', st.kills], ['Damage dealt', Math.round(st.damage).toLocaleString()],
+  const waves = b.level.endless ? `${Math.max(0, b.waveIdx)}` : `${won ? b.totalWaves : Math.max(0, b.waveIdx)}/${b.totalWaves}`;
+  const cells = [['Time', `${mins}:${String(secs).padStart(2, '0')}`], ['Waves cleared', waves], ['Slimes destroyed', st.kills], ['Damage dealt', Math.round(st.damage).toLocaleString()],
     ['Energy collected', st.energyCollected.toLocaleString()], ['Energy spent', st.energySpent.toLocaleString()], ['Robots built', st.placed], ['Fusions', st.fused], ['Robots lost', st.lost], ['Robots removed', st.removed]];
   const top = Object.entries(st.byUnit).filter(([k]) => SS.UNITS[k]).sort((a, c) => c[1] - a[1]).slice(0, 5);
   const max = top.length ? top[0][1] : 1;
@@ -329,7 +337,7 @@ $('#end-retry').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelId
 $('#end-next').onclick = () => { SS.Audio.play('click'); battle = null; SS.Audio.playMusic('menu'); prepLevel(lastLevelIdx + 1); };
 $('#end-map').onclick = () => { SS.Audio.play('click'); quitToMap(); };
 
-function quitToMap() { $('#overlay').classList.remove('docked'); battle = null; SS.battle = null; paused = false; buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); }
+function quitToMap() { $('#overlay').classList.remove('docked'); SS.dockRight = 0; battle = null; SS.battle = null; paused = false; buildLevelSelect(); show('levelselect'); SS.Audio.playMusic('menu'); }
 $('#p-resume').onclick = () => { SS.Audio.play('click'); SS.togglePause(false); };
 $('#p-restart').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelIdx, SS.lastCards); };
 $('#p-quit').onclick = () => { SS.Audio.play('click'); quitToMap(); };
