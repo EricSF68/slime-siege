@@ -1,6 +1,8 @@
 {
   "sprites": [
     "acid",
+    "arcrifle",
+    "barrage",
     "blaster",
     "blob",
     "bomb",
@@ -8,18 +10,26 @@
     "bulwark",
     "capped",
     "cryo",
+    "cryorep",
     "dasher",
+    "dynamo",
     "flamer",
+    "gatling",
     "hopper",
+    "inferno",
     "iron",
     "king",
     "lobber",
     "mine",
     "mini",
+    "reactor",
     "shield",
+    "solar",
     "spark",
     "splitter",
-    "tesla"
+    "tesla",
+    "turretwall",
+    "twin"
   ],
   "sfx": [
     "armorHit",
