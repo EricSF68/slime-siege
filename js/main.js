@@ -2,7 +2,8 @@
 'use strict';
 (() => {
 const { W, H } = SS.CONST;
-const KEY = 'slimesiege.v1';
+const KEY = SS.SAVE_KEY || 'slimesiege.v1';
+const T = s => (SS.TEXT && SS.TEXT[s] != null) ? SS.TEXT[s] : s;
 const $ = s => document.querySelector(s);
 
 // ---------- save ----------
@@ -167,7 +168,7 @@ function buildLevelSelect() {
     const b = document.createElement('button');
     const locked = i + 1 > SS.save.unlocked;
     b.className = 'lvl' + (locked ? ' locked' : '') + (SS.save.stars[i] ? ' done' : '');
-    b.innerHTML = `<span class="n">${i + 1}</span><span class="t">${locked ? 'Locked' : L.name}</span>${L.boss ? '<span class="boss">BOSS</span>' : ''}`;
+    b.innerHTML = `<span class="n">${i + 1}</span><span class="t">${locked ? T('Locked') : L.name}</span>${L.boss ? '<span class="boss">BOSS</span>' : ''}`;
     b.disabled = locked;
     b.onclick = () => { SS.Audio.play('click'); prepLevel(i); };
     g.appendChild(b);
@@ -175,7 +176,7 @@ function buildLevelSelect() {
   const e = document.createElement('button');
   const eLocked = SS.save.unlocked <= SS.LEVELS.length;
   e.className = 'lvl endless' + (eLocked ? ' locked' : '');
-  e.innerHTML = `<span class="n">∞</span><span class="t">${eLocked ? 'Beat level 12' : 'Endless Ooze'}</span>${!eLocked ? `<span class="boss">Best ${SS.save.endlessBest}</span>` : ''}`;
+  e.innerHTML = `<span class="n">∞</span><span class="t">${eLocked ? T('Beat level 12') : SS.ENDLESS.name}</span>${!eLocked ? `<span class="boss">Best ${SS.save.endlessBest}</span>` : ''}`;
   e.disabled = eLocked;
   e.onclick = () => { SS.Audio.play('click'); prepLevel('endless'); };
   g.appendChild(e);
@@ -290,7 +291,7 @@ SS.onBattleEnd = (won, b) => {
       const best = waves > (SS.save.endlessBest || 0);
       if (best) SS.save.endlessBest = waves;
       SS.persist();
-      $('#end-title').textContent = 'Overrun!';
+      $('#end-title').textContent = T('Overrun!');
       $('#end-msg').textContent = `You survived ${waves} wave${waves === 1 ? '' : 's'}.${best ? ' New best!' : ` Best: ${SS.save.endlessBest}.`}`;
       $('#end-next').style.display = 'none';
       $('#end-unlock').innerHTML = '';
@@ -304,19 +305,19 @@ SS.onBattleEnd = (won, b) => {
       const newly = idx + 2 > SS.save.unlocked;
       if (newly) SS.save.unlocked = idx + 2;
       SS.persist();
-      $('#end-title').textContent = idx === SS.LEVELS.length - 1 ? 'The King Has Fallen!' : 'Level Clear!';
+      $('#end-title').textContent = idx === SS.LEVELS.length - 1 ? T('The King Has Fallen!') : T('Level Clear!');
       let msg = '';
       if (newly && L.unlock) {
         $('#end-unlock').appendChild(iconCanvas('r', L.unlock, 96));
-        $('#end-unlock').insertAdjacentHTML('beforeend', `<div><b>New robot: ${SS.UNITS[L.unlock].name}</b><br>${SS.UNITS[L.unlock].desc}</div>`);
+        $('#end-unlock').insertAdjacentHTML('beforeend', `<div><b>${T('New robot: ')}${SS.UNITS[L.unlock].name}</b><br>${SS.UNITS[L.unlock].desc}</div>`);
       }
-      if (idx === SS.LEVELS.length - 1) msg = 'Endless mode unlocked!';
-      if (idx === 8 && newly) msg = 'Tier-3 fusions unlocked!';
+      if (idx === SS.LEVELS.length - 1) msg = T('Endless mode unlocked!');
+      if (idx === 8 && newly) msg = T('Tier-3 fusions unlocked!');
       $('#end-msg').textContent = msg;
       $('#end-next').style.display = idx < SS.LEVELS.length - 1 ? '' : 'none';
     } else {
-      $('#end-title').textContent = 'The Slimes Got In!';
-      $('#end-msg').textContent = 'A slime reached the core. Try a different build, more fusions, or the Grabber.';
+      $('#end-title').textContent = T('The Slimes Got In!');
+      $('#end-msg').textContent = T('A slime reached the core. Try a different build, more fusions, or the Grabber.');
       $('#end-next').style.display = 'none';
     }
     renderStats(b, won);
@@ -326,12 +327,12 @@ SS.onBattleEnd = (won, b) => {
 function renderStats(b, won) {
   const st = b.stats, mins = Math.floor(b.time / 60), secs = Math.floor(b.time % 60);
   const waves = b.level.endless ? `${Math.max(0, b.waveIdx)}` : `${won ? b.totalWaves : Math.max(0, b.waveIdx)}/${b.totalWaves}`;
-  const cells = [['Time', `${mins}:${String(secs).padStart(2, '0')}`], ['Waves cleared', waves], ['Slimes destroyed', st.kills], ['Damage dealt', Math.round(st.damage).toLocaleString()],
-    ['Energy collected', st.energyCollected.toLocaleString()], ['Energy spent', st.energySpent.toLocaleString()], ['Robots built', st.placed], ['Fusions', st.fused], ['Robots lost', st.lost], ['Robots removed', st.removed]];
+  const cells = [['Time', `${mins}:${String(secs).padStart(2, '0')}`], [T('Waves cleared'), waves], [T('Slimes destroyed'), st.kills], [T('Damage dealt'), Math.round(st.damage).toLocaleString()],
+    [T('Energy collected'), st.energyCollected.toLocaleString()], [T('Energy spent'), st.energySpent.toLocaleString()], [T('Robots built'), st.placed], [T('Fusions'), st.fused], [T('Robots lost'), st.lost], [T('Robots removed'), st.removed]];
   const top = Object.entries(st.byUnit).filter(([k]) => SS.UNITS[k]).sort((a, c) => c[1] - a[1]).slice(0, 5);
   const max = top.length ? top[0][1] : 1;
   $('#end-stats').innerHTML = `<div class="stat-grid">${cells.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>` +
-    (top.length ? `<details class="dmg"><summary>Damage by robot</summary>${top.map(([k, v]) => `<div class="bar"><span>${SS.UNITS[k].name}</span><i style="width:${Math.max(4, v / max * 100)}%"></i><b>${Math.round(v).toLocaleString()}</b></div>`).join('')}</details>` : '');
+    (top.length ? `<details class="dmg"><summary>${T('Damage by robot')}</summary>${top.map(([k, v]) => `<div class="bar"><span>${SS.UNITS[k].name}</span><i style="width:${Math.max(4, v / max * 100)}%"></i><b>${Math.round(v).toLocaleString()}</b></div>`).join('')}</details>` : '');
 }
 $('#end-retry').onclick = () => { SS.Audio.play('click'); startLevel(lastLevelIdx, SS.lastCards); };
 $('#end-next').onclick = () => { SS.Audio.play('click'); battle = null; SS.Audio.playMusic('menu'); prepLevel(lastLevelIdx + 1); };
@@ -375,7 +376,7 @@ $('#ls-back').onclick = () => { SS.Audio.play('click'); show('title'); };
 $('#al-back').onclick = () => { SS.Audio.play('click'); show(battle ? 'pause' : 'title'); };
 $('#st-back').onclick = () => { SS.Audio.play('click'); show('title'); };
 $('#st-reset').onclick = () => {
-  if (!confirm('Erase all progress?')) return;
+  if (!confirm(T('Erase all progress?'))) return;
   SS.save = { unlocked: 1, endlessBest: 0, discovered: [], loadout: null, stars: {} }; SS.persist(); SS.Audio.play('click');
 };
 function buildHowTo() {
@@ -418,7 +419,7 @@ function buildAlmanac(tab) {
   const list = $('#al-list'); list.innerHTML = '';
   const detail = $('#al-detail');
   const fc = $('#al-count');
-  if (fc) fc.textContent = tab === 'fusions' ? `${SS.FUSION_LIST.filter(f => SS.save.discovered.includes(f[2])).length}/${SS.FUSION_LIST.length} fusions found` : '';
+  if (fc) fc.textContent = tab === 'fusions' ? `${SS.FUSION_LIST.filter(f => SS.save.discovered.includes(f[2])).length}/${SS.FUSION_LIST.length} ${T('fusions found')}` : '';
   const unlocked = unlockedUnits();
   let entries = [];
   if (tab === 'robots') entries = SS.BASE_ORDER.map(id => ({ id, kind: 'r', known: unlocked.includes(id) }));
@@ -434,7 +435,7 @@ function buildAlmanac(tab) {
     const d = e.kind === 'r' ? SS.UNITS[e.id] : SS.SLIMES[e.id];
     let html = `<h3>${d.name}</h3><p>${d.desc}</p>`;
     if (e.kind === 'r') {
-      if (d.from) html += `<p class="recipe">Recipe: <b>${SS.UNITS[d.from[0]].name}</b> + <b>${SS.UNITS[d.from[1]].name}</b><br><span class="muted">Place either robot onto the other, or use the Grabber.</span>${SS.fusionLocked(e.id) ? '<br><span class="lock">Locked until you clear Level 9</span>' : ''}${SS.save.discovered.includes(e.id) ? '<br><span class="found">✓ Found</span>' : ''}</p>`;
+      if (d.from) html += `<p class="recipe">Recipe: <b>${SS.UNITS[d.from[0]].name}</b> + <b>${SS.UNITS[d.from[1]].name}</b><br><span class="muted">${T('Place either robot onto the other, or use the Grabber.')}</span>${SS.fusionLocked(e.id) ? '<br><span class="lock">Locked until you clear Level 9</span>' : ''}${SS.save.discovered.includes(e.id) ? '<br><span class="found">✓ Found</span>' : ''}</p>`;
       else html += `<p>Cost: <b>${d.cost}</b> · Recharge: <b>${d.cd >= 30 ? 'Slow' : 'Fast'}</b></p>`;
       html += `<p class="muted">Toughness: ${d.hp >= 9999 ? '—' : d.hp}</p>`;
       if (!d.from) {

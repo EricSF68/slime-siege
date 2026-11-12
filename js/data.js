@@ -246,7 +246,7 @@ SS.BASE_ORDER = ['spark', 'blaster', 'bulwark', 'mine', 'cryo', 'bomb', 'lobber'
 // Optional asset overrides: list file names (without extension) in assets/manifest.json
 SS._manifest = null;
 SS.assetManifest = () => SS._manifest || (SS._manifest = (location.protocol === 'file:' ? Promise.resolve({}) :
-  fetch('assets/manifest.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))));
+  fetch((SS.BASE || '') + 'assets/manifest.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))));
 
 // Pacing: wave budget multiplier x difficulty. Tuned with scripted playtests.
 SS.PACE = { budget: 1.5, wave: 20, flagWave: 26, firstWave: 18, sky: [3.6, 5.0], nightSky: 1.35, trickle: [8, 12] };

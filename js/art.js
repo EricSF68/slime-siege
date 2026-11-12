@@ -4,15 +4,17 @@ SS.Art = (() => {
   const sprites = {};
   function loadSprites() {
     if (location.protocol === 'file:') return;
-    SS.assetManifest().then(m => (m.sprites || []).forEach(id => {
+    // a themed build can point at its own sprite folder and list (SS.SPRITE_DIR + sprites.json)
+    const list = SS.SPRITE_DIR ? fetch(SS.SPRITE_DIR + 'sprites.json').then(r => r.ok ? r.json() : []).catch(() => []).then(a => ({ sprites: a })) : SS.assetManifest();
+    list.then(m => (m.sprites || []).forEach(id => {
       const img = new Image();
       img.onload = () => { sprites[id] = img; if (id === 'background') SS.Art.bgDirty = true; };
-      img.src = `assets/sprites/${id}.png`;
+      img.src = `${SS.SPRITE_DIR || 'assets/sprites/'}${id}.png`;
     }));
   }
 
-  const SPRITE_H = { bulwark: 100, mine: 50, bomb: 84, spark: 96, tesla: 112, cryo: 100 };
-  const SLIME_K = { dasher: 0.62, hopper: 1.15, shield: 1.0, brute: 1.0, king: 1.0, acid: 0.95 };
+  const SPRITE_H = SS.SPRITE_H || { bulwark: 100, mine: 50, bomb: 84, spark: 96, tesla: 112, cryo: 100 };
+  const SLIME_K = SS.SLIME_K || { dasher: 0.62, hopper: 1.15, shield: 1.0, brute: 1.0, king: 1.0, acid: 0.95 };
   const useSprite = id => !!sprites[id] && (!SS.settings || SS.settings.gfx !== 'classic');
   function shade(hex, amt) {
     let r, g, b;
@@ -320,7 +322,7 @@ SS.Art = (() => {
       const hc = huskCanvas.getContext('2d');
       hc.setTransform(1, 0, 0, 1, 0, 0); hc.globalCompositeOperation = 'source-over'; hc.clearRect(0, 0, S, S);
       hc.translate(S / 2, S - 20);
-      drawSlime(hc, type, t, Object.assign({}, o, { husk: false, alpha: 1, flash: false, slow: false, frozen: false, scale: 1 }));
+      SS.Art.drawSlime(hc, type, t, Object.assign({}, o, { husk: false, alpha: 1, flash: false, slow: false, frozen: false, scale: 1 }));
       hc.setTransform(1, 0, 0, 1, 0, 0); hc.globalCompositeOperation = 'source-atop';
       hc.fillStyle = '#241c16'; hc.fillRect(0, 0, S, S);
       hc.fillStyle = 'rgba(255,140,60,0.25)'; for (let i = 0; i < 6; i++) { hc.beginPath(); hc.arc(S / 2 - 40 + i * 16, S - 50 - (i % 3) * 18, 3, 0, 6.3); hc.fill(); }
@@ -675,5 +677,5 @@ SS.Art = (() => {
   }
 
 
-  return { spriteCount: () => Object.keys(sprites).length, drawRobot, drawSlime, drawEnergy, makeBackground, loadSprites, shade, rr, ell, star, sprites, bgDirty: false };
+  return { spriteCount: () => Object.keys(sprites).length, useSprite, drawRobot, drawSlime, drawEnergy, makeBackground, loadSprites, shade, rr, ell, star, sprites, bgDirty: false };
 })();

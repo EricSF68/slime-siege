@@ -20,6 +20,21 @@ python3 -m http.server 8000
 
 **Updating:** edit files, commit, push. Bump `VERSION` in `sw.js` so installed copies pick up the change.
 
+## Whodini edition: Recruiters vs. Candidates
+
+A themed spin-off lives in `whodini/` and opens at `/whodini/` (for example `https://ericsf68.github.io/slime-siege/whodini/`).
+It reuses the engine in `js/` and the sounds in `assets/`; everything Whodini-specific is in that folder:
+
+- `whodini/index.html`, `whodini.css`: entry page and brand styles (Poppins, Whodini purple and cream)
+- `whodini/theme-data.js`: recruiter, AI-feature and candidate names, the AI-feature recipes, levels and on-screen text
+- `whodini/theme-art.js`: office background, Leads, projectiles, fallback drawings
+- `whodini/assets/sprites/`: illustrated sprites (listed in `sprites.json`)
+- `whodini/icons/`, `manifest.webmanifest`, `sw.js`: its own icon, install name and offline cache
+
+The engine reads a few optional hooks set before it loads: `SS.BASE` (path to shared assets), `SS.SPRITE_DIR`,
+`SS.SAVE_KEY`, `SS.TEXT` (string overrides), `SS.IMPACT`, `SS.HUD_COLORS`, `SS.SPRITE_H`, `SS.SLIME_K`,
+and `feature: true` on a unit (a card that can only be placed onto another unit). Slime Siege sets none of them.
+
 ## Controls
 - **Touch/mouse:** tap a robot card, then tap a tile — or drag the card onto the tile. Tap energy cells to collect.
 - **Fusion:** place a robot onto another robot. Matching pairs fuse (gold outline shows valid targets). See Almanac → Fusions.

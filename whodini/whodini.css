@@ -1,0 +1,50 @@
+/* Recruiters vs. Candidates — Whodini brand layer over ../style.css (colors and type from whodini.ai) */
+:root { --bg:#F6F4EF; --panel:rgba(246,244,239,.97); --line:#5C15E0; --gold:#5C15E0; --text:#1B1528; --muted:#6B6475;
+  --purple:#5C15E0; --violet:#7B3BF0; --lav:#C9B6FF; --lav2:#E6DCFF; --ink:#1B1528; --ink2:#2B2438; --sand:#EEEBE3; --stone:#DCD7CC; }
+html, body { font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#overlay { background:rgba(27,21,40,.45); }
+.screen { border:1px solid var(--stone); box-shadow:0 24px 60px rgba(27,21,40,.35); color:var(--ink); }
+#title { background:rgba(246,244,239,.93); border:1px solid var(--stone); box-shadow:0 24px 60px rgba(27,21,40,.35); max-width:min(760px,100%); }
+.brand { display:flex; align-items:center; gap:10px; }
+.brand svg { height:clamp(30px,6vh,46px); width:auto; }
+.brand .pill { font-size:12px; font-weight:600; color:var(--purple); background:var(--lav2); border-radius:999px; padding:3px 10px; }
+h1 { display:block; font-weight:800; letter-spacing:-0.5px; font-size:min(clamp(34px,8.5vh,72px), 8.5vw); line-height:1.0; color:var(--ink); }
+h1 .t1 { color:var(--purple); text-shadow:none; }
+h1 .vs { color:var(--muted); font-weight:600; font-size:.55em; padding:0 .2em; vertical-align:middle; }
+h1 .t2 { color:var(--ink); text-shadow:none; }
+.sub { color:var(--ink2); font-weight:500; max-width:560px; }
+.sub b { color:var(--purple); }
+h2 { color:var(--ink); font-weight:700; }
+button { color:var(--ink); background:#FFFFFF; border:1.5px solid var(--stone); border-radius:12px; font-weight:600; }
+button:hover:not(:disabled) { background:var(--lav2); border-color:var(--lav); }
+button.big { color:#fff; background:var(--purple); border-color:var(--purple); box-shadow:0 6px 18px rgba(92,21,224,.35); }
+button.big:hover:not(:disabled) { background:#4A0FC0; border-color:#4A0FC0; }
+button.back { background:var(--sand); border-color:var(--stone); color:var(--ink); }
+button.danger { background:#FFF0F0; border-color:#E8A0A0; color:#A01F2A; }
+.lvl .n { color:var(--purple); } .lvl .t { color:var(--ink); }
+.lvl.done::after { color:#2BB673; }
+.lvl .boss { background:var(--purple); color:#fff; }
+.lvl.endless { border-color:var(--violet); } .lvl.endless .boss { background:var(--violet); }
+.lvl.locked .n { color:#B4ACC2; } .lvl.locked .t { color:#B4ACC2; }
+.enemies canvas { background:var(--sand); }
+.pcard .cs { color:var(--purple); font-weight:700; }
+.pcard.on { border-color:var(--purple); background:var(--lav2); box-shadow:0 0 0 2px rgba(92,21,224,.25); }
+.pcard.feature { background:linear-gradient(#FFFFFF,#F1EAFF); }
+.pcard.dup { border-color:var(--violet); } .pcard .x2 { color:var(--violet); }
+.settings input[type=range], .settings input[type=checkbox] { accent-color:var(--purple); }
+.settings select { background:#fff; color:var(--ink); border:1.5px solid var(--stone); }
+.tab.on { border-color:var(--purple); background:var(--lav2); }
+.al-detail, .ht-block, .stat-grid div, .dmg { background:#FFFFFF; border:1px solid var(--stone); }
+.al-detail h3, .ht-block h3 { color:var(--purple); }
+.ht-block p { color:var(--ink2); }
+.recipe b { color:var(--purple); }
+.recipe .lock { color:var(--muted); } .recipe .found { color:#2BB673; }
+.acard.unknown .q { color:#B4ACC2; }
+.dmg .bar i { background:linear-gradient(90deg,var(--purple),var(--lav)); }
+#overlay.docked .screen { background:rgba(246,244,239,.95); }
+.screen > .back { background:var(--sand); }
+#rotate { background:rgba(246,244,239,.97); color:var(--ink); }
+.foot { font-size:12px; color:var(--muted); margin:0; }
+.foot a { color:var(--purple); font-weight:600; text-decoration:none; }
+.ht-block .tag { display:inline-block; font-size:11px; font-weight:700; color:var(--purple); background:var(--lav2); border-radius:999px; padding:1px 8px; margin-right:4px; }
+@media (max-height:500px) { #title { gap:6px; } .brand .pill { display:none; } }

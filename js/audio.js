@@ -49,10 +49,10 @@ SS.Audio = (() => {
   function loadOverrides() {
     if (location.protocol === 'file:') return;
     SS.assetManifest().then(m => {
-      (m.sfx || []).forEach(async n => { const b = await tryLoad(`assets/sfx/${n}.mp3`); if (b) overrides[n] = b; });
+      (m.sfx || []).forEach(async n => { const b = await tryLoad(`${SS.BASE || ''}assets/sfx/${n}.mp3`); if (b) overrides[n] = b; });
       loopLens = m.loops || {};
       (m.music || []).forEach(async n => {
-        const b = await tryLoad(`assets/music/${n}.mp3`);
+        const b = await tryLoad(`${SS.BASE || ''}assets/music/${n}.mp3`);
         if (!b) return;
         musicOverrides[n] = b;
         // swap a synth track that's already playing for the loaded file

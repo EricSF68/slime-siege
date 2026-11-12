@@ -35,7 +35,9 @@ const HUD = {
   counter: { x: 8, y: H - 46, w: 150, h: 40 },
 };
 const TOOL_CD = { grab: 10, beam: 40 };
-const IMPACT = { bomb: 'KA-BLAM!', mine: 'SPLORT!', nuke: 'KA-THOOM!', cryoburst: 'KRSSSH!' };
+const T = s => (SS.TEXT && SS.TEXT[s] != null) ? SS.TEXT[s] : s;
+const HC = Object.assign({ tray: 'rgba(10,16,28,0.72)', panel: '#1e2a40', accent: '#3ad0ff', card: '#24324d', cardSel: '#3b5a8a', border: '#4a5f88', tool: '#2a2433', btn: 'rgba(30,42,66,0.85)', tipBg: 'rgba(12,18,30,0.9)', tipText: '#e8f6ff', trayEdge: 'rgba(80,110,160,0.6)', label: '#9fe8ff', counter: '#d6f5d6', toolEdge: '#5a4a6a' }, SS.HUD_COLORS);
+const IMPACT = SS.IMPACT || { bomb: 'KA-BLAM!', mine: 'SPLORT!', nuke: 'KA-THOOM!', cryoburst: 'KRSSSH!' };
 
 class Battle {
   constructor(level, loadout, opts = {}) {
@@ -167,8 +169,8 @@ class Battle {
       SS.Audio.playMusic('boss');
     }
     this.waveHp = hp;
-    if (final) { this.showBanner(this.level.boss ? 'KING GLOOP APPROACHES!' : 'FINAL WAVE', 3.5, '#ff5a5a'); SS.Audio.play('finalWave'); }
-    else if (flag) { this.showBanner('A HUGE SLIME SURGE IS COMING!', 3, '#ff5a5a'); SS.Audio.play('surge'); }
+    if (final) { this.showBanner(this.level.boss ? T('KING GLOOP APPROACHES!') : T('FINAL WAVE'), 3.5, '#ff5a5a'); SS.Audio.play('finalWave'); }
+    else if (flag) { this.showBanner(T('A HUGE SLIME SURGE IS COMING!'), 3, '#ff5a5a'); SS.Audio.play('surge'); }
     else if (i === 0) SS.Audio.play('surge');
     this.waveTimer = flag ? SS.PACE.flagWave : SS.PACE.wave;
   }
@@ -202,6 +204,8 @@ class Battle {
     if (card.cd > 0) return { ok: false, why: 'cooldown' };
     if (this.energy < card.cost) return { ok: false, why: 'energy' };
     const cur = this.grid[r][c];
+    const feature = SS.UNITS[card.id] && SS.UNITS[card.id].feature;   // themed upgrade cards only go onto a unit
+    if (!cur && feature) return { ok: false, why: 'feature' };
     if (!cur) { const b = this.blocked(r, c); return b ? { ok: false, why: b } : { ok: true, mode: 'place' }; }
     if (card.id === 'crate') return { ok: false, why: 'occupied' };
     const f = this.fusionFor(cur.id, card.id);
@@ -209,7 +213,7 @@ class Battle {
     if (f && f.locked) return canRepair ? { ok: true, mode: 'repair' } : { ok: false, why: 'locked', result: f.result };
     if (f) return { ok: true, mode: 'fuse', result: f.result };
     if (canRepair) return { ok: true, mode: 'repair' };
-    return { ok: false, why: 'occupied' };
+    return { ok: false, why: feature ? 'nofuse' : 'occupied' };
   }
   place(ci, r, c) {
     const chk = this.placeCheck(ci, r, c);
@@ -219,7 +223,7 @@ class Battle {
     if (chk.mode === 'fuse') this.doFuse(this.grid[r][c], chk.result, r, c);
     else if (chk.mode === 'repair') {
       const u = this.grid[r][c]; u.hp = u.maxHp; u.flash = 0.2;
-      SS.Audio.play('place'); this.floatText(u.x, u.y - 50, 'REPAIRED', '#7dff8a');
+      SS.Audio.play('place'); this.floatText(u.x, u.y - 50, T('REPAIRED'), '#7dff8a');
     } else {
       this.addUnit(card.id, r, c);
       SS.Audio.play('place');
@@ -232,9 +236,11 @@ class Battle {
   reject(chk, r, c) {
     SS.Audio.play('invalid');
     if (chk.why === 'energy') this.flashEnergy = 0.6;
-    if (chk.why === 'locked') this.floatText(tileX(c), tileY(r) - 40, 'Locked: clear Level 9', '#c9d1e0', 18);
-    if (chk.why === 'debris') this.floatText(tileX(c), tileY(r) - 40, 'Clear the scrap first', '#c9d1e0', 18);
-    if (chk.why === 'scorch') this.floatText(tileX(c), tileY(r) - 40, 'Too hot to build', '#ffb070', 18);
+    if (chk.why === 'locked') this.floatText(tileX(c), tileY(r) - 40, T('Locked: clear Level 9'), '#c9d1e0', 18);
+    if (chk.why === 'debris') this.floatText(tileX(c), tileY(r) - 40, T('Clear the scrap first'), '#c9d1e0', 18);
+    if (chk.why === 'feature') this.floatText(tileX(c), tileY(r) - 40, T('Place this on a robot'), '#c9d1e0', 18);
+    if (chk.why === 'nofuse') this.floatText(tileX(c), tileY(r) - 40, T('No fusion'), '#c9d1e0', 18);
+    if (chk.why === 'scorch') this.floatText(tileX(c), tileY(r) - 40, T('Too hot to build'), '#ffb070', 18);
   }
   doFuse(old, result, r, c, extra) {
     this.removeUnit(old, true);
@@ -280,7 +286,7 @@ class Battle {
     const u = this.grid[r][c];
     if (u) { this.removeUnit(u, false, 'wrench'); this.selected = null; return true; }
     if (this.debris[r][c]) {
-      if (this.energy < 25) { this.flashEnergy = 0.6; SS.Audio.play('invalid'); this.floatText(tileX(c), tileY(r) - 40, 'Clearing scrap costs 25', '#ffb070', 18); return false; }
+      if (this.energy < 25) { this.flashEnergy = 0.6; SS.Audio.play('invalid'); this.floatText(tileX(c), tileY(r) - 40, T('Clearing scrap costs 25'), '#ffb070', 18); return false; }
       this.energy -= 25; this.stats.energySpent += 25;
       this.debris[r][c] = 0; SS.Audio.play('unitDie'); this.selected = null;
       for (let i = 0; i < 14; i++) this.fx.push({ k: 'p', x: tileX(c) + this.rng.range(-25, 25), y: tileY(r), vx: this.rng.range(-140, 140), vy: this.rng.range(-240, -60), g: 600, life: 0.7, max: 0.7, color: i % 2 ? '#7a6248' : '#4a3a2a', size: 5 });
@@ -304,7 +310,7 @@ class Battle {
       SS.Audio.play('place');
     } else {
       const f = this.fusionFor(h.id, u.id);
-      if (!f) { SS.Audio.play('invalid'); this.floatText(u.x, u.y - 40, 'No fusion', '#c9d1e0', 18); return false; }
+      if (!f) { SS.Audio.play('invalid'); this.floatText(u.x, u.y - 40, T('No fusion'), '#c9d1e0', 18); return false; }
       if (f.locked) { this.reject({ why: 'locked' }, r, c); return false; }
       this.doFuse(u, f.result, r, c, h);
     }
@@ -337,12 +343,12 @@ class Battle {
     const u = this.grid[r][c];
     if (!u || u.def.fusion || u.armor > 0 || u.beh.some(b => b.t === 'bomb' || b.t === 'crate')) {
       SS.Audio.play('invalid');
-      this.floatText(tileX(c), tileY(r) - 40, u && u.def.fusion ? 'Caps fit basic robots only' : 'Pick a basic robot', '#c9d1e0', 18);
+      this.floatText(tileX(c), tileY(r) - 40, u && u.def.fusion ? T('Caps fit basic robots only') : T('Pick a basic robot'), '#c9d1e0', 18);
       return false;
     }
     u.armor = u.maxArmor = this.heldCap.val; u.capKind = this.heldCap.kind;
     this.heldCap = null; this.selected = null;
-    SS.Audio.play('armorHit'); this.floatText(u.x, u.y - 50, '+ARMOR', '#c9d1e0');
+    SS.Audio.play('armorHit'); this.floatText(u.x, u.y - 50, T('+ARMOR'), '#c9d1e0');
     return true;
   }
 
@@ -375,7 +381,7 @@ class Battle {
     const metal = s.type === 'iron' ? '#8f9aa8' : s.type === 'hothead' ? '#7d8796' : '#b0a090';
     this.fx.push({ k: 'debris', x: s.x, y: groundY(s.row) - 50 * s.def.size, vx: 80, vy: -260, rot: 0, vr: 8, life: 1, max: 1, w: 34, h: 16, color: metal });
     if (s.def.enrage) {
-      s.enraged = true; this.floatText(s.x, groundY(s.row) - 80, 'BOIL!', '#ff7a4a');
+      s.enraged = true; this.floatText(s.x, groundY(s.row) - 80, T('BOIL!'), '#ff7a4a');
       SS.Audio.play('flame');
     }
     if (s.type === 'capped' || s.type === 'iron') {
@@ -613,7 +619,7 @@ class Battle {
                   px = s.x; py = sy;
                   this.damage(s, b.dmg, 'zap', u.id);
                 }
-                if (b.n >= 6 && this.rng.next() < 0.25) this.fx.push({ k: 'word', x: px, y: py - 30, text: 'ZZAP!', life: 0.8, max: 0.8, color: '#e2d6ff' });
+                if (b.n >= 6 && this.rng.next() < 0.25) this.fx.push({ k: 'word', x: px, y: py - 30, text: T('ZZAP!'), life: 0.8, max: 0.8, color: '#e2d6ff' });
                 SS.Audio.play('zap'); u.fireT = 0.2;
               }
             }
@@ -626,7 +632,7 @@ class Battle {
   }
   openCrate(u) {
     const r = u.r, c = u.c;
-    const unlocked = (SS.unlockedUnits ? SS.unlockedUnits() : SS.BASE_ORDER).filter(id => id !== 'crate');
+    const unlocked = (SS.unlockedUnits ? SS.unlockedUnits() : SS.BASE_ORDER).filter(id => id !== 'crate' && !U[id].feature);
     const fusions = SS.FUSION_LIST.map(f => f[2]);
     let pool;
     const roll = this.rng.next();
@@ -681,7 +687,7 @@ class Battle {
         if (s.summonT <= 0) {
           s.summonT = 14;
           for (let k = 0; k < 3; k++) this.spawnQueue.push({ type: this.rng.pick(['blob', 'capped', 'dasher', 'hopper', 'iron']), row: this.rng.int(ROWS), delay: k * 0.6, wave: this.waveIdx });
-          this.floatText(s.x, tileY(s.row) - 120, 'SUMMON!', '#9f9');
+          this.floatText(s.x, tileY(s.row) - 120, T('SUMMON!'), '#9f9');
           SS.Audio.play('surge');
         }
         s.gooT -= dt;
@@ -829,7 +835,7 @@ class Battle {
     if (e.collecting) return;
     if (e.kind === 'cap') {
       e.done = true; this.held = null; this.heldCap = { kind: e.cap, val: e.val, x: e.x, y: e.y }; this.selected = 'cap';
-      SS.Audio.play('select'); this.floatText(e.x, e.y - 30, 'Tap a basic robot', '#c9d1e0', 18);
+      SS.Audio.play('select'); this.floatText(e.x, e.y - 30, T('Tap a basic robot'), '#c9d1e0', 18);
       return;
     }
     e.collecting = true; e.ct = 0; e.cx0 = e.x; e.cy0 = e.y;
@@ -1079,24 +1085,24 @@ class Battle {
     if (this.state === 'intro' || this.state === 'panback') {
       const a = this.state === 'intro' ? Math.min(1, this.introT * 2) : Math.max(0, 1 - this.introT * 2);
       ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const label = this.level.endless ? 'ENDLESS' : `LEVEL ${String(this.level.label || '').replace('.', '')}`;
+      const label = this.level.endless ? T('ENDLESS') : `${T('LEVEL')} ${String(this.level.label || '').replace('.', '')}`;
       if (SS.dockRight) { const cx = (SS.dockRight + W) / 2; ctx.translate(cx - W / 2, 0); const room = W - SS.dockRight; if (room < 560) { const k = Math.max(0.55, room / 560); ctx.translate(W / 2, 0); ctx.scale(k, k); ctx.translate(-W / 2, 0); } }
       ctx.font = '800 22px system-ui,sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-      ctx.strokeText(label, W / 2, 46); ctx.fillStyle = '#9fe8ff'; ctx.fillText(label, W / 2, 46);
+      ctx.strokeText(label, W / 2, 46); ctx.fillStyle = HC.label; ctx.fillText(label, W / 2, 46);
       ctx.font = '900 46px system-ui,sans-serif'; ctx.lineWidth = 8;
       ctx.strokeText(this.level.name, W / 2, 88); ctx.fillStyle = '#fff'; ctx.fillText(this.level.name, W / 2, 88);
-      if (this.level.night) { ctx.font = '800 18px system-ui,sans-serif'; ctx.lineWidth = 5; ctx.strokeText('NIGHT SHIFT', W / 2, 122); ctx.fillStyle = '#ffb347'; ctx.fillText('NIGHT SHIFT', W / 2, 122); }
+      if (this.level.night) { ctx.font = '800 18px system-ui,sans-serif'; ctx.lineWidth = 5; ctx.strokeText(T('NIGHT SHIFT'), W / 2, 122); ctx.fillStyle = '#ffb347'; ctx.fillText(T('NIGHT SHIFT'), W / 2, 122); }
       ctx.restore();
     }
     if (this.state === 'countdown') {
-      const beats = [['READY', 0, 0.55], ['SET', 0.55, 1.1], ['DEFEND!', 1.1, 1.8]];
+      const beats = [[T('READY'), 0, 0.55], [T('SET'), 0.55, 1.1], [T('DEFEND!'), 1.1, 1.8]];
       const b = beats.find(x => this.introT >= x[1] && this.introT < x[2]) || beats[2];
       const k = (this.introT - b[1]) / (b[2] - b[1]);
       ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const sc = 1.25 - 0.25 * Math.min(1, k * 4);
       ctx.translate(W / 2, H / 2); ctx.scale(sc, sc); ctx.globalAlpha = k > 0.8 ? (1 - k) * 5 : 1;
       ctx.font = '900 84px system-ui,sans-serif'; ctx.lineWidth = 12; ctx.strokeStyle = '#000'; ctx.strokeText(b[0], 0, 0);
-      ctx.fillStyle = b[0] === 'DEFEND!' ? '#7dff8a' : '#ffe36a'; ctx.fillText(b[0], 0, 0);
+      ctx.fillStyle = b === beats[2] ? '#7dff8a' : '#ffe36a'; ctx.fillText(b[0], 0, 0);
       ctx.restore();
     }
     // wave banners: outlined text over the field, no band
@@ -1112,9 +1118,9 @@ class Battle {
       ctx.save();
       const tw = 760, th = 76, tx = (W - tw) / 2, ty = H - th - 56;
       ctx.globalAlpha = Math.min(1, this.tip.t);
-      ctx.fillStyle = 'rgba(12,18,30,0.9)'; SS.Art.rr(ctx, tx, ty, tw, th, 14); ctx.fill();
-      ctx.strokeStyle = '#3ad0ff'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#e8f6ff'; ctx.font = '600 19px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = HC.tipBg; SS.Art.rr(ctx, tx, ty, tw, th, 14); ctx.fill();
+      ctx.strokeStyle = HC.accent; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = HC.tipText; ctx.font = '600 19px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       wrapText(ctx, this.tip.text, W / 2, ty + th / 2, tw - 40, 23);
       ctx.restore();
     }
@@ -1138,7 +1144,7 @@ class Battle {
       if (t > 0.7) {
         ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.7) * 3); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.font = '900 64px system-ui,sans-serif'; ctx.lineWidth = 10; ctx.strokeStyle = '#000';
-        ctx.strokeText('CORE BREACHED!', W / 2, H / 2 - 120); ctx.fillStyle = '#ff5a5a'; ctx.fillText('CORE BREACHED!', W / 2, H / 2 - 120);
+        ctx.strokeText(T('CORE BREACHED!'), W / 2, H / 2 - 120); ctx.fillStyle = '#ff5a5a'; ctx.fillText(T('CORE BREACHED!'), W / 2, H / 2 - 120);
         ctx.restore();
       }
     }
@@ -1148,8 +1154,8 @@ class Battle {
     ctx.fillStyle = 'rgba(255,240,150,0.25)'; ctx.beginPath(); ctx.arc(0, 0, 60 + Math.sin(rt * 5) * 6, 0, 6.29); ctx.fill();
     ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#7a5a00'; ctx.lineWidth = 3;
     SS.Art.rr(ctx, -28, -34, 56, 68, 10); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#7a5a00'; ctx.font = 'bold 14px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('CORE', 0, 5);
-    if (this.state === 'clear') { ctx.fillStyle = '#fff'; ctx.font = 'bold 16px system-ui,sans-serif'; ctx.fillText('Tap!', 0, 60); }
+    ctx.fillStyle = '#7a5a00'; ctx.font = 'bold 14px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(T('CORE'), 0, 5);
+    if (this.state === 'clear') { ctx.fillStyle = '#fff'; ctx.font = 'bold 16px system-ui,sans-serif'; ctx.fillText(T('Tap!'), 0, 60); }
     ctx.restore();
   }
   drawPadlock(ctx, x, y) {
@@ -1246,7 +1252,7 @@ class Battle {
       const bx = W / 2 - w / 2, by = BY - 30;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx - 4, by - 4, w + 8, 22);
       ctx.fillStyle = '#5bd65b'; ctx.fillRect(bx, by, w * f, 14);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('KING GLOOP', W / 2, by - 8);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(T('KING GLOOP'), W / 2, by - 8);
     }
   }
   drawPreviewSlime(ctx, s, rt) {
@@ -1359,13 +1365,13 @@ class Battle {
   drawHUD(ctx, rt) {
     const keys = SS.showKeys;
     // floating tray behind energy + cards + tools
-    ctx.fillStyle = 'rgba(10,16,28,0.72)';
+    ctx.fillStyle = HC.tray;
     SS.Art.rr(ctx, 2, 2, HUD.beam.x + HUD.beam.w + 6, 108, 14); ctx.fill();
-    ctx.strokeStyle = 'rgba(80,110,160,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = HC.trayEdge; ctx.lineWidth = 2; ctx.stroke();
     // energy
     const E = HUD.energy;
-    ctx.fillStyle = this.flashEnergy > 0 && Math.sin(rt * 30) > 0 ? '#5a1a1a' : '#1e2a40'; SS.Art.rr(ctx, E.x, E.y, E.w, E.h, 12); ctx.fill();
-    ctx.strokeStyle = '#3ad0ff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = this.flashEnergy > 0 && Math.sin(rt * 30) > 0 ? '#5a1a1a' : HC.panel; SS.Art.rr(ctx, E.x, E.y, E.w, E.h, 12); ctx.fill();
+    ctx.strokeStyle = HC.accent; ctx.lineWidth = 2; ctx.stroke();
     ctx.save(); ctx.translate(E.x + E.w / 2, E.y + 36); SS.Art.drawEnergy(ctx, 0, 0.9); ctx.restore();
     ctx.fillStyle = '#fff'; ctx.font = '800 28px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(Math.floor(this.energy)), E.x + E.w / 2, E.y + 80);
@@ -1377,8 +1383,8 @@ class Battle {
       if (!c) { ctx.strokeStyle = 'rgba(90,115,160,0.45)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2; SS.Art.rr(ctx, x + 1, y + 1, Cw - 2, C.h - 2, 10); ctx.stroke(); ctx.setLineDash([]); continue; }
       const sel = this.selected === i;
       const afford = this.energy >= c.cost;
-      ctx.fillStyle = sel ? '#3b5a8a' : '#24324d'; SS.Art.rr(ctx, x, y + (sel ? 4 : 0), Cw, C.h, 10); ctx.fill();
-      ctx.strokeStyle = sel ? '#ffd84a' : c.dup ? '#b48cff' : '#4a5f88'; ctx.lineWidth = sel ? 3 : 2; ctx.stroke();
+      ctx.fillStyle = sel ? HC.cardSel : HC.card; SS.Art.rr(ctx, x, y + (sel ? 4 : 0), Cw, C.h, 10); ctx.fill();
+      ctx.strokeStyle = sel ? '#ffd84a' : c.dup ? '#b48cff' : HC.border; ctx.lineWidth = sel ? 3 : 2; ctx.stroke();
       ctx.save(); ctx.beginPath(); ctx.rect(x + 2, y + 2, Cw - 4, C.h - 4); ctx.clip();
       ctx.translate(x + Cw / 2, y + 46 + (sel ? 4 : 0)); SS.Art.drawRobot(ctx, c.id, 0, { scale: 0.55, noBadge: true }); ctx.restore();
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x + 2, y + C.h - 24 + (sel ? 4 : 0), Cw - 4, 22);
@@ -1395,8 +1401,8 @@ class Battle {
     const tool = (k, label, key, icon, color) => {
       const b = HUD[k];
       const on = this.selected === k, cd = this.toolCd[k] || 0, avail = k === 'wrench' || this.tools[k];
-      ctx.fillStyle = on ? color : '#2a2433'; SS.Art.rr(ctx, b.x, b.y, b.w, b.h, 10); ctx.fill();
-      ctx.strokeStyle = on ? '#ffd84a' : '#5a4a6a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = on ? color : HC.tool; SS.Art.rr(ctx, b.x, b.y, b.w, b.h, 10); ctx.fill();
+      ctx.strokeStyle = on ? '#ffd84a' : HC.toolEdge; ctx.lineWidth = 2; ctx.stroke();
       if (!avail) { ctx.strokeStyle = 'rgba(90,115,160,0.45)'; ctx.setLineDash([5, 5]); SS.Art.rr(ctx, b.x + 1, b.y + 1, b.w - 2, b.h - 2, 10); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(10,16,28,0.75)'; SS.Art.rr(ctx, b.x, b.y, b.w, b.h, 10); ctx.fill(); this.drawPadlock(ctx, b.x + b.w / 2, b.y + b.h / 2); return; }
       ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2 - 8); icon(0.9); ctx.restore();
       ctx.fillStyle = '#ccc'; ctx.font = '600 12px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(label, b.x + b.w / 2, b.y + b.h - 12);
@@ -1406,28 +1412,30 @@ class Battle {
       }
       if (keys) { ctx.fillStyle = '#9ab'; ctx.font = '600 11px system-ui'; ctx.textAlign = 'left'; ctx.fillText(key, b.x + 5, b.y + 11); }
     };
-    tool('wrench', 'Remove', 'W', s => this.drawWrenchIcon(ctx, s), '#5a3b3b');
-    tool('grab', 'Grab', 'G', s => this.drawGrabIcon(ctx, s), '#4a4a2a');
-    tool('beam', 'Beam', 'T', s => this.drawBeamIcon(ctx, s), '#2a4a5a');
+    tool('wrench', T('Remove'), 'W', s => this.drawWrenchIcon(ctx, s), '#5a3b3b');
+    tool('grab', T('Grab'), 'G', s => this.drawGrabIcon(ctx, s), '#4a4a2a');
+    tool('beam', T('Beam'), 'T', s => this.drawBeamIcon(ctx, s), '#2a4a5a');
     // speed & pause
     for (const k of ['speed', 'pause']) {
       const b = HUD[k];
-      ctx.fillStyle = 'rgba(30,42,66,0.85)'; SS.Art.rr(ctx, b.x, b.y, b.w, b.h, 12); ctx.fill(); ctx.strokeStyle = '#4a5f88'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = HC.btn; SS.Art.rr(ctx, b.x, b.y, b.w, b.h, 12); ctx.fill(); ctx.strokeStyle = HC.border; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = '#fff';
       if (k === 'pause') { ctx.fillRect(b.x + 25, b.y + 21, 8, 30); ctx.fillRect(b.x + 39, b.y + 21, 8, 30); }
       else { const sp = SS.speed || 1; ctx.font = '800 22px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sp === 0.5 ? '½×' : sp + '×', b.x + b.w / 2, b.y + b.h / 2); }
       if (keys) { ctx.fillStyle = '#9ab'; ctx.font = '600 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(k === 'pause' ? 'Space' : 'F', b.x + b.w / 2, b.y + b.h + 10); }
     }
     // bottom-left: slime counter
-    const CT = HUD.counter;
-    ctx.fillStyle = 'rgba(10,16,28,0.72)'; SS.Art.rr(ctx, CT.x, CT.y, CT.w, CT.h, 10); ctx.fill();
+    const CT = HUD.counter, n = this.liveCount();
+    const ctText = `${n} ${n === 1 ? T('slime') : T('slimes')}`;
+    ctx.font = '800 18px system-ui,sans-serif';
+    const ctW = Math.max(CT.w, 54 + ctx.measureText(ctText).width + 14);
+    ctx.fillStyle = HC.tray; SS.Art.rr(ctx, CT.x, CT.y, ctW, CT.h, 10); ctx.fill();
     ctx.save(); ctx.translate(CT.x + 24, CT.y + CT.h - 6); SS.Art.drawSlime(ctx, 'blob', rt, { scale: 0.42, moving: false }); ctx.restore();
-    ctx.fillStyle = '#d6f5d6'; ctx.font = '800 18px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const n = this.liveCount();
-    ctx.fillText(`${n} slime${n === 1 ? '' : 's'}`, CT.x + 54, CT.y + CT.h / 2);
+    ctx.fillStyle = HC.counter; ctx.font = '800 18px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(ctText, CT.x + 54, CT.y + CT.h / 2);
     // bottom-right: level name + progress
     const PR = HUD.progress;
-    ctx.fillStyle = 'rgba(10,16,28,0.72)'; SS.Art.rr(ctx, PR.x, PR.y, PR.w, PR.h, 10); ctx.fill();
+    ctx.fillStyle = HC.tray; SS.Art.rr(ctx, PR.x, PR.y, PR.w, PR.h, 10); ctx.fill();
     ctx.fillStyle = '#ccd'; ctx.font = '700 13px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     const diff = (SS.settings && SS.settings.difficulty) || 'normal';
     ctx.fillText(this.level.endless ? `Endless · Wave ${Math.max(0, this.waveIdx + 1)} · Best ${SS.save.endlessBest || 0}` : `${this.level.label || ''} ${this.level.name} · ${diff[0].toUpperCase() + diff.slice(1)}`, PR.x + 10, PR.y + 12);
