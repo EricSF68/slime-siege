@@ -292,7 +292,7 @@ SS.onBattleEnd = (won, b) => {
       if (best) SS.save.endlessBest = waves;
       SS.persist();
       $('#end-title').textContent = T('Overrun!');
-      $('#end-msg').textContent = `You survived ${waves} wave${waves === 1 ? '' : 's'}.${best ? ' New best!' : ` Best: ${SS.save.endlessBest}.`}`;
+      $('#end-msg').textContent = `${T('You survived')} ${waves} ${waves === 1 ? T('wave') : T('waves')}.${best ? ' New best!' : ` Best: ${SS.save.endlessBest}.`}`;
       $('#end-next').style.display = 'none';
       $('#end-unlock').innerHTML = '';
       renderStats(b, false);
@@ -309,7 +309,7 @@ SS.onBattleEnd = (won, b) => {
       let msg = '';
       if (newly && L.unlock) {
         $('#end-unlock').appendChild(iconCanvas('r', L.unlock, 96));
-        $('#end-unlock').insertAdjacentHTML('beforeend', `<div><b>${T('New robot: ')}${SS.UNITS[L.unlock].name}</b><br>${SS.UNITS[L.unlock].desc}</div>`);
+        $('#end-unlock').insertAdjacentHTML('beforeend', `<div><b>${SS.UNITS[L.unlock].feature ? T('New AI feature: ') : T('New robot: ')}${SS.UNITS[L.unlock].name}</b><br>${SS.UNITS[L.unlock].desc}</div>`);
       }
       if (idx === SS.LEVELS.length - 1) msg = T('Endless mode unlocked!');
       if (idx === 8 && newly) msg = T('Tier-3 fusions unlocked!');
@@ -430,7 +430,7 @@ function buildAlmanac(tab) {
   else entries = Object.keys(SS.SLIMES).map(id => ({ id, kind: 's', known: true }));
   const showDetail = (e) => {
     detail.innerHTML = '';
-    if (!e.known) { detail.innerHTML = '<p class="muted">Unlock more robots to reveal this entry.</p>'; return; }
+    if (!e.known) { detail.innerHTML = `<p class="muted">${T('Unlock more robots to reveal this entry.')}</p>`; return; }
     detail.appendChild(iconCanvas(e.kind, e.id, 140));
     const d = e.kind === 'r' ? SS.UNITS[e.id] : SS.SLIMES[e.id];
     let html = `<h3>${d.name}</h3><p>${d.desc}</p>`;
@@ -440,7 +440,7 @@ function buildAlmanac(tab) {
       html += `<p class="muted">Toughness: ${d.hp >= 9999 ? '—' : d.hp}</p>`;
       if (!d.from) {
         const fs = SS.FUSION_LIST.filter(f => f[0] === e.id || f[1] === e.id);
-        if (fs.length) html += `<p class="muted">Fuses into: ${fs.map(f => SS.UNITS[f[2]].name).join(', ')}</p>`;
+        if (fs.length) html += `<p class="muted">${T('Fuses into:')} ${fs.map(f => SS.UNITS[f[2]].name).join(', ')}</p>`;
       }
     } else {
       html += `<p class="muted">Toughness: ${d.hp + (d.armor || 0) + (d.front || 0)} · Speed: ${d.speed >= 40 ? 'Fast' : d.speed >= 25 ? 'Medium' : 'Slow'}</p>`;

@@ -1438,7 +1438,7 @@ class Battle {
     ctx.fillStyle = HC.tray; SS.Art.rr(ctx, PR.x, PR.y, PR.w, PR.h, 10); ctx.fill();
     ctx.fillStyle = '#ccd'; ctx.font = '700 13px system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     const diff = (SS.settings && SS.settings.difficulty) || 'normal';
-    ctx.fillText(this.level.endless ? `Endless · Wave ${Math.max(0, this.waveIdx + 1)} · Best ${SS.save.endlessBest || 0}` : `${this.level.label || ''} ${this.level.name} · ${diff[0].toUpperCase() + diff.slice(1)}`, PR.x + 10, PR.y + 12);
+    ctx.fillText(this.level.endless ? `${T('Endless')} · ${T('Wave')} ${Math.max(0, this.waveIdx + 1)} · Best ${SS.save.endlessBest || 0}` : `${this.level.label || ''} ${this.level.name} · ${diff[0].toUpperCase() + diff.slice(1)}`, PR.x + 10, PR.y + 12);
     if (!this.level.endless) {
       const bx = PR.x + 10, by = PR.y + 22, bw = PR.w - 20, bh = 11;
       ctx.fillStyle = '#0a0f18'; SS.Art.rr(ctx, bx, by, bw, bh, 5); ctx.fill();

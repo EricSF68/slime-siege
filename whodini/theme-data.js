@@ -122,11 +122,14 @@ SS.TEXT = {
   'slime': 'candidate', 'slimes': 'candidates', 'Place this on a robot': 'AI features go on a recruiter',
   'Overrun!': 'Swamped!', 'The King Has Fallen!': 'You Hired the Unicorn!', 'Level Clear!': 'Req Filled!', 'The Slimes Got In!': 'Candidates Got Away!',
   'A slime reached the core. Try a different build, more fusions, or the Grabber.': 'A candidate walked out to a competitor. Try more AI features, a different mix of recruiters, or the Grabber.',
-  'Slimes destroyed': 'Candidates hired', 'Robots built': 'Recruiters placed', 'Robots lost': 'Recruiters burned out', 'Robots removed': 'Recruiters removed',
+  'Slimes destroyed': 'Candidates hired', 'Robots built': 'Recruiters placed', 'Robots lost': 'Burnouts', 'Robots removed': 'Recruiters removed',
   'Energy collected': 'Leads collected', 'Energy spent': 'Leads spent', 'Fusions': 'AI upgrades', 'Damage dealt': 'Persuasion', 'Waves cleared': 'Rounds cleared',
   'New robot: ': 'New hire: ', 'Damage by robot': 'Impact by recruiter', 'Tier-3 fusions unlocked!': 'Tier-3 upgrades unlocked!',
   'Place either robot onto the other, or use the Grabber.': 'Drop one onto the other, or combine them with the Grabber.',
   'fusions found': 'AI upgrades found',
+  'You survived': 'You survived', 'wave': 'round', 'waves': 'rounds', 'Wave': 'Round', 'Endless': 'Endless',
+  'New AI feature: ': 'New AI feature: ', 'Unlock more robots to reveal this entry.': 'Unlock more recruiters to reveal this entry.',
+  'Fuses into:': 'Upgrades into:',
 };
 
 // ---------- presentation ----------

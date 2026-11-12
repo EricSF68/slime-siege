@@ -122,13 +122,18 @@ function fallbackRobot(ctx, id, t, o) {
   }
   ctx.restore();
 }
+const BASE_H = Object.assign({}, SS.SPRITE_H), MAX_W = 132;
 A.drawRobot = function (ctx, id, t, o = {}) {
-  if (A.useSprite(id)) return origRobot(ctx, id, t, o);
+  if (A.useSprite(id)) {              // keep wide illustrations inside one tile
+    const img = A.sprites[id], want = BASE_H[id] || 100;
+    SS.SPRITE_H[id] = Math.min(want, MAX_W * img.height / img.width);
+    return origRobot(ctx, id, t, o);
+  }
   const alias = TIER3[id];
   if (alias && A.useSprite(alias)) {           // tier-3: the tier-2 art with a gold aura and a bigger frame
     ctx.save();
     ctx.shadowColor = P.gold; ctx.shadowBlur = 22;
-    const img = A.sprites[alias], hh = (SS.SPRITE_H[alias] || 100) * 1.12, ww = img.width / img.height * hh;
+    const img = A.sprites[alias], hh = Math.min((BASE_H[alias] || 100) * 1.12, (MAX_W + 14) * img.height / img.width), ww = img.width / img.height * hh;
     if (o.scale) ctx.scale(o.scale, o.scale);
     ctx.drawImage(img, -ww / 2, 44 - hh, ww, hh);
     ctx.shadowBlur = 0; ctx.fillStyle = P.gold;
@@ -175,8 +180,9 @@ A.drawSlime = function (ctx, type, t, o = {}) {
   let key = type;
   if ((type === 'capped' || type === 'iron') && !(o.armor > 0)) key = 'blob';
   if (type === 'shield' && !(o.front > 0)) key = 'blob';
+  const drawAs = type === 'hothead' && !(o.armor > 0) && A.useSprite('dasher') ? 'dasher' : type;   // suitcase dropped: they bolt
   if (A.useSprite(key)) {
-    origSlime(ctx, type, t, Object.assign({}, o, { slow: false, frozen: false, flash: false }));
+    origSlime(ctx, drawAs, t, Object.assign({}, o, { slow: false, frozen: false, flash: false }));
     if (o.slow || o.frozen || o.flash) {        // tint over the figure, not a slime-shaped blob
       const R = 32 * d.size, hh = R * 3 * (SS.SLIME_K[type] || 1);
       ctx.save(); if (o.scale) ctx.scale(o.scale, o.scale);
