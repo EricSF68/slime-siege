@@ -1,6 +1,6 @@
 {
-  "name": "Recruiters vs. Candidates · Whodini",
-  "short_name": "Recruiters",
+  "name": "Whodini · Recruiters vs. Candidates",
+  "short_name": "Whodini",
   "description": "Use Whodini AI to build the ultimate recruiter machine.",
   "start_url": "./",
   "scope": "./",
