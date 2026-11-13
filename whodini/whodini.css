@@ -49,3 +49,6 @@ button.danger { background:#FFF0F0; border-color:#E8A0A0; color:#A01F2A; }
 .foot a { color:var(--purple); font-weight:600; text-decoration:none; }
 .ht-block .tag { display:inline-block; font-size:11px; font-weight:700; color:var(--purple); background:var(--lav2); border-radius:999px; padding:1px 8px; margin-right:4px; }
 @media (max-height:500px) { #title { gap:6px; } .brand .pill { display:none; } }
+#a2hs { --a-bg:#F6F4EF; --a-card:#FFFFFF; --a-line:var(--stone); --a-acc:var(--purple); --a-on:#fff; --a-btn:rgba(255,255,255,.16); }
+#a2hs .a-head p { color:var(--ink2); }
+#a2hs .a-home { background:linear-gradient(135deg,#5C15E0,#C9B6FF); }

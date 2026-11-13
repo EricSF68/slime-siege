@@ -474,3 +474,52 @@ SS.test = {
   view: () => view,
 };
 })();
+
+// ---------- "Add to Home Screen" coach (iPhone/iPad in Safari, not yet installed) ----------
+(() => {
+  const ua = navigator.userAgent;
+  const iOS = /iPhone|iPod/.test(ua) || /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const installed = navigator.standalone === true || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  const force = /[?&]a2hs=(\d+|1)/.exec(location.search);
+  if (!force && (!iOS || installed)) return;
+  const iPad = /iPad/.test(ua) || navigator.platform === 'MacIntel';
+  const other = /CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram|LinkedInApp/.test(ua);   // not Safari
+  const sv = +((/Version\/(\d+)/.exec(ua) || [])[1] || 0);
+  const modern = force ? force[1] !== '18' : sv >= 26;   // Safari 26: Share lives under the ••• menu
+  const name = (document.querySelector('meta[name="apple-mobile-web-app-title"]') || {}).content || document.title;
+  const icon = (document.querySelector('link[rel="apple-touch-icon"]') || {}).href || 'icons/icon-192.png';
+  const I = {
+    dots: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" class="a-btn"/><circle cx="14" cy="24" r="3.4"/><circle cx="24" cy="24" r="3.4"/><circle cx="34" cy="24" r="3.4"/></svg>',
+    share: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" class="a-btn"/><path d="M17 21h-2.5v15h19V21H31" class="a-ln"/><path d="M24 29V9M18 15l6-6 6 6" class="a-ln"/></svg>',
+    add: '<svg viewBox="0 0 48 48"><rect x="9" y="9" width="30" height="30" rx="8" class="a-ln"/><path d="M24 17v14M17 24h14" class="a-ln"/></svg>',
+    hand: '<svg viewBox="0 0 40 40" class="a-hand"><path d="M16 36c-3-4-8-8-8-11 0-2 2-3 4-2l4 3V8a2.5 2.5 0 0 1 5 0v10l9 1.5c2 .4 3 2 2.7 4L31 36z"/></svg>',
+  };
+  const bar = hl => `<div class="a-mock a-bar">
+      ${modern ? `<span class="a-pill">◂</span><span class="a-url">🔒 ${location.host}</span><span class="a-ico ${hl === 'dots' ? 'hl' : ''}">${I.dots}${hl === 'dots' ? I.hand : ''}</span>`
+               : `<span class="a-pill">‹</span><span class="a-pill">›</span><span class="a-ico ${hl === 'share' ? 'hl' : ''}">${I.share}${hl === 'share' ? I.hand : ''}</span><span class="a-pill">▢</span><span class="a-pill">⧉</span>`}
+    </div>`;
+  const menu = (rows, hl) => `<div class="a-mock a-menu">${rows.map(([ic, t]) => `<div class="a-row ${t === hl ? 'hl' : ''}"><span>${t}</span>${ic}${t === hl ? I.hand : ''}</div>`).join('')}</div>`;
+  const steps = [];
+  if (other) steps.push(['🧭', 'Open this page in <b>Safari</b>', '<div class="a-mock a-note">Home Screen web apps work best from Safari. Copy the link, then paste it into Safari.</div>']);
+  if (modern && !iPad) {
+    steps.push([1, 'Tap the <b>•••</b> button next to the address bar', bar('dots')]);
+    steps.push([2, 'Tap <b>Share</b>', menu([[I.share, 'Share'], ['<svg viewBox="0 0 48 48"><path d="M12 10h24v30l-12-8-12 8z" class="a-ln"/></svg>', 'Add Bookmark']], 'Share')]);
+  } else {
+    steps.push([1, `Tap the <b>Share</b> button${iPad ? ' at the top of Safari' : ' at the bottom of Safari'}`, bar('share')]);
+  }
+  steps.push([steps.length + (other ? 0 : 1), 'Scroll down and tap <b>Add to Home Screen</b>', menu([['<svg viewBox="0 0 48 48"><rect x="10" y="12" width="28" height="24" rx="4" class="a-ln"/></svg>', 'Copy'], [I.add, 'Add to Home Screen']], 'Add to Home Screen')]);
+  steps.push([steps.length + (other ? 0 : 1), `${modern ? 'Leave <b>Open as Web App</b> on, then tap' : 'Tap'} <b>Add</b>`,
+    `<div class="a-mock a-sheet"><img src="${icon}" alt=""><div><b>${name}</b><small>${location.host}</small>${modern ? '<span class="a-tog">Open as Web App <i></i></span>' : ''}</div><span class="a-addbtn">Add</span></div>`]);
+  steps.push(['✓', `Open <b>${name}</b> from your Home Screen`, `<div class="a-mock a-home"><span></span><img src="${icon}" alt=""><span></span><em>${name}</em></div>`]);
+
+  const el = document.createElement('div');
+  el.id = 'a2hs'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'a2hs-t');
+  el.innerHTML = `<div class="a-box">
+      <div class="a-head"><img src="${icon}" alt=""><div><h2 id="a2hs-t">Add ${name} to your Home Screen</h2>
+      <p>It plays full screen with no Safari bars in the way, keeps your progress, and opens like an app. Takes 10 seconds.</p></div></div>
+      <ol class="a-steps">${steps.map(([n, t, g]) => `<li><span class="a-n">${n}</span><p>${t}</p>${g}</li>`).join('')}</ol>
+      <button id="a2hs-skip" class="back">Play in Safari anyway <small>(not recommended)</small></button>
+    </div>`;
+  document.body.appendChild(el);
+  el.querySelector('#a2hs-skip').onclick = () => { el.remove(); };
+})();

@@ -1,5 +1,5 @@
 // Offline cache for the Whodini edition. Bump VERSION when you change files.
-const VERSION = 'whodini-rvc-v2';
+const VERSION = 'whodini-rvc-v3';
 const FILES = ['./', 'index.html', 'whodini.css', 'theme-data.js', 'theme-art.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/whodini-logo.svg',
   '../style.css', '../js/data.js', '../js/audio.js', '../js/art.js', '../js/game.js', '../js/main.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
