@@ -212,3 +212,19 @@ button.danger { background:#5a1f24; border-color:#a0404a; }
 #a2hs .a-home { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; }
 #a2hs .a-home span, #a2hs .a-home img { width:min(36px, 100%); height:auto; aspect-ratio:1; }
 #a2hs .a-sheet div > .a-tog { white-space:normal; flex-wrap:wrap; }
+#a2hs .a-circ { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); font-size:18px; }
+#a2hs .a-url26 { display:flex; align-items:center; gap:8px; padding:4px 10px 4px 4px; overflow:visible; }
+#a2hs .a-host { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; text-align:center; }
+#a2hs .a-rl { opacity:.8; font-size:15px; }
+#a2hs .a-pm { width:30px; height:30px; }
+#a2hs .a-pm svg { width:22px; height:22px; }
+#a2hs .a-pm .a-hand { right:-14px; bottom:-20px; }
+#a2hs svg.a-inl { width:18px; height:18px; vertical-align:-3px; }
+#a2hs li p small { opacity:.7; font-size:.85em; }
+@media (orientation:landscape) and (min-width:600px) {
+  #a2hs .a-circ:last-child { display:none; }
+  #a2hs .a-circ { width:28px; height:28px; }
+  #a2hs .a-url26 { flex:1; }
+  #a2hs .a-rl { display:none; }
+}
+@media (orientation:landscape) and (max-height:430px) { #a2hs li p small { display:none; } }

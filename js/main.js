@@ -492,17 +492,18 @@ SS.test = {
     dots: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" class="a-btn"/><circle cx="14" cy="24" r="3.4"/><circle cx="24" cy="24" r="3.4"/><circle cx="34" cy="24" r="3.4"/></svg>',
     share: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" class="a-btn"/><path d="M17 21h-2.5v15h19V21H31" class="a-ln"/><path d="M24 29V9M18 15l6-6 6 6" class="a-ln"/></svg>',
     add: '<svg viewBox="0 0 48 48"><rect x="9" y="9" width="30" height="30" rx="8" class="a-ln"/><path d="M24 17v14M17 24h14" class="a-ln"/></svg>',
+    page: '<svg viewBox="0 0 48 48"><rect x="8" y="9" width="17" height="11" rx="3" class="a-ln"/><path d="M8 27h32M8 36h26" class="a-ln"/></svg>',
     hand: '<svg viewBox="0 0 40 40" class="a-hand"><path d="M16 36c-3-4-8-8-8-11 0-2 2-3 4-2l4 3V8a2.5 2.5 0 0 1 5 0v10l9 1.5c2 .4 3 2 2.7 4L31 36z"/></svg>',
   };
   const bar = hl => `<div class="a-mock a-bar">
-      ${modern ? `<span class="a-pill">◂</span><span class="a-url">🔒 ${location.host}</span><span class="a-ico ${hl === 'dots' ? 'hl' : ''}">${I.dots}${hl === 'dots' ? I.hand : ''}</span>`
+      ${modern ? `<span class="a-circ">‹</span><span class="a-url a-url26"><span class="a-ico a-pm ${hl === 'dots' ? 'hl' : ''}">${I.page}${hl === 'dots' ? I.hand : ''}</span><span class="a-host">${location.host}</span><span class="a-rl">↻</span></span><span class="a-circ">⧉</span>`
                : `<span class="a-pill">‹</span><span class="a-pill">›</span><span class="a-ico ${hl === 'share' ? 'hl' : ''}">${I.share}${hl === 'share' ? I.hand : ''}</span><span class="a-pill">▢</span><span class="a-pill">⧉</span>`}
     </div>`;
   const menu = (rows, hl) => `<div class="a-mock a-menu">${rows.map(([ic, t]) => `<div class="a-row ${t === hl ? 'hl' : ''}"><span>${t}</span>${ic}${t === hl ? I.hand : ''}</div>`).join('')}</div>`;
   const steps = [];
   if (other) steps.push(['🧭', 'Open this page in <b>Safari</b>', '<div class="a-mock a-note">Home Screen web apps work best from Safari. Copy the link, then paste it into Safari.</div>']);
   if (modern && !iPad) {
-    steps.push([1, 'Tap the <b>•••</b> button next to the address bar', bar('dots')]);
+    steps.push([1, `Tap the <b>page menu</b> icon ${I.page.replace('<svg', '<svg class="a-inl"')} at the left of the address bar <small>(or the <b>•••</b> button, if your Safari shows one)</small>`, bar('dots')]);
     steps.push([2, 'Tap <b>Share</b>', menu([[I.share, 'Share'], ['<svg viewBox="0 0 48 48"><path d="M12 10h24v30l-12-8-12 8z" class="a-ln"/></svg>', 'Add Bookmark']], 'Share')]);
   } else {
     steps.push([1, `Tap the <b>Share</b> button${iPad ? ' at the top of Safari' : ' at the bottom of Safari'}`, bar('share')]);
